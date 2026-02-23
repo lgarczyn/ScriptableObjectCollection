@@ -349,7 +349,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (Application.isPlaying)
                 return;
 
-            List<ScriptableObjectCollection> foundCollections  = new List<ScriptableObjectCollection>();
+            HashSet<ScriptableObjectCollection> foundCollections  = new HashSet<ScriptableObjectCollection>();
 
             bool changed = false;
             string[] typeGUIDs = AssetDatabase.FindAssets($"t:{nameof(ScriptableObjectCollection)}");
@@ -376,7 +376,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (changed)
             {
                 ValidateCollections();
-                collections = foundCollections;
+                collections = foundCollections.ToList();
                 ObjectUtility.SetDirty(this);
             }
 #endif
