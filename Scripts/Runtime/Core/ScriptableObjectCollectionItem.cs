@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace BrunoMikoski.ScriptableObjectCollections
 {
-    public class ScriptableObjectCollectionItem : ScriptableObject, IComparable<ScriptableObjectCollectionItem>, ISOCItem, IEquatable<ISOCItem>
+    public class ScriptableObjectCollectionItem : ScriptableObject, IComparable<ScriptableObjectCollectionItem>, ISOCItem
     {
         [SerializeField, HideInInspector]
         private LongGuid guid;
@@ -93,47 +93,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
         public int CompareTo(ScriptableObjectCollectionItem other)
         {
             return string.Compare(name, other.name, StringComparison.Ordinal);
-        }
-
-        public bool Equals(ISOCItem other)
-        {
-            if (other == null)
-                return false;
-
-            return GUID == other.GUID;
-        }
-
-        public override bool Equals(object o)
-        {
-            ScriptableObjectCollectionItem other = o as ScriptableObjectCollectionItem;
-            if (other == null)
-                return false;
-
-            return ReferenceEquals(this, other);
-        }
-
-        public static bool operator==(ScriptableObjectCollectionItem left, ScriptableObjectCollectionItem right)
-        {
-            if (ReferenceEquals(left, right))
-                return true;
-
-            if (ReferenceEquals(left, null))
-                return false;
-
-            if (ReferenceEquals(right, null))
-                return false;
-
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(ScriptableObjectCollectionItem left, ScriptableObjectCollectionItem right)
-        {
-            return !(left == right);
-        }
-        
-        public override int GetHashCode()
-        {
-            return GUID.GetHashCode();
         }
     }
 }
