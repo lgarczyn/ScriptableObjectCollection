@@ -537,11 +537,17 @@ namespace BrunoMikoski.ScriptableObjectCollections
             }
         }
 
-        public static IReadOnlyList<TSubType> OfType<TSubType>() where TSubType : TObjectType
+		private static Dictionary<Type, IReadOnlyList<TObjectType>> cacheByType = new Dictionary<Type, IReadOnlyList<TObjectType>>();
+
+		public static IReadOnlyList<TSubType> OfType<TSubType>() where TSubType : TObjectType
         {
-            if (cachedValues == null)
-                cachedValues = CollectionsRegistry.Instance.GetAllCollectionItemsOfType<TSubType>();
-            return cachedValues;
+			if (cacheByType.TryGetValue(typeof(TSubType), out IReadOnlyList<TObjectType> cachedList))
+            {
+				return (IReadOnlyList<TSubType>)cachedList;
+			}
+            List<SubType> newList = Values.OfType<TSubType>().ToList();
+			cacheByType[typeof(TSubType)] = newList;
+			return newList;
         }
 
         public new TObjectType this[int index]
@@ -702,6 +708,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
         protected override void ClearCachedValues()
         {
             cachedValues = null;
+			cacheByType.Clear();
         }
     }
 }
