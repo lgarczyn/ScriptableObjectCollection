@@ -537,6 +537,13 @@ namespace BrunoMikoski.ScriptableObjectCollections
             }
         }
 
+        public static IReadOnlyList<TSubType> OfType<TSubType>() where TSubType : TObjectType
+        {
+            if (cachedValues == null)
+                cachedValues = CollectionsRegistry.Instance.GetAllCollectionItemsOfType<TSubType>();
+            return cachedValues;
+        }
+
         public new TObjectType this[int index]
         {
             get => (TObjectType)base[index];
