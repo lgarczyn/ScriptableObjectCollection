@@ -545,7 +545,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             {
 				return (IReadOnlyList<TSubType>)cachedList;
 			}
-            List<SubType> newList = Values.OfType<TSubType>().ToList();
+            List<TSubType> newList = Values.OfType<TSubType>().ToList();
 			cacheByType[typeof(TSubType)] = newList;
 			return newList;
         }
