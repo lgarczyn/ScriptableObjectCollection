@@ -1,8 +1,7 @@
-﻿using System;
+using System;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 namespace BrunoMikoski.ScriptableObjectCollections
 {
@@ -15,9 +14,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
         public string ParentFolderPath;
         public bool WriteAsPartialClass;
         public bool UseBaseClassForItems;
-        public bool EnforceIndirectAccess;
-
-        public bool WriteAddressableLoadingMethods;
 
         private AssetImporter importer;
 
@@ -31,7 +27,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             string targetNamespace = targetCollection.GetItemType().Namespace;
             if (string.IsNullOrEmpty(targetNamespace) && !string.IsNullOrEmpty(SOCSettings.Instance.NamespacePrefix))
                 targetNamespace = $"{SOCSettings.Instance.NamespacePrefix}";
-            
+
             Namespace = targetNamespace;
 
             if (!string.IsNullOrEmpty(SOCSettings.Instance.generatedScriptsDefaultFilePath) && AssetDatabase.IsValidFolder(SOCSettings.Instance.generatedScriptsDefaultFilePath))
@@ -44,26 +40,17 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 string parentFolder = Path.GetDirectoryName(baseClassPath);
                 ParentFolderPath = parentFolder;
             }
-            
+
             bool canBePartial = CodeGenerationUtility.CheckIfCanBePartial(targetCollection, ParentFolderPath);
-            
+
             if (canBePartial)
                 StaticFilename = $"{targetCollection.GetType().Name}Static".FirstToUpper();
-            else 
+            else
                 StaticFilename = $"{targetCollection.GetType().Name}".FirstToUpper();
 
             WriteAsPartialClass = canBePartial;
             UseBaseClassForItems = false;
-            EnforceIndirectAccess = false;
             Save();
-        }
-        
-        public bool ShouldWriteAddressableLoadingMethods()
-        {
-            if (!CollectionsRegistry.Instance.GetCollectionByGUID(Guid).AutomaticallyLoaded)
-                return false;
-
-            return WriteAddressableLoadingMethods;
         }
 
         public void SetImporter(AssetImporter targetImporter)
@@ -78,24 +65,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             importer.userData = EditorJsonUtility.ToJson(this);
             AssetDatabase.WriteImportSettingsIfDirty(importer.assetPath);
-        }
-
-        public void SetWriteAddressableLoadingMethods(bool shouldWriteAddressablesMethods)
-        {
-            if (WriteAddressableLoadingMethods == shouldWriteAddressablesMethods)
-                return;
-
-            WriteAddressableLoadingMethods = shouldWriteAddressablesMethods;
-            Save();
-        }
-
-        public void SetEnforceIndirectAccess(bool enforceIndirectAccess)
-        {
-            if (EnforceIndirectAccess == enforceIndirectAccess)
-                return;
-
-            EnforceIndirectAccess = enforceIndirectAccess;
-            Save();
         }
 
         public void SetStaticFilename(string targetNewName)

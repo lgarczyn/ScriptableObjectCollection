@@ -1,6 +1,6 @@
-﻿using System;
+using System;
 using System.IO;
-#if  UNITY_EDITOR
+#if UNITY_EDITOR
 using UnityEditor;
 #endif
 using UnityEngine;
@@ -27,12 +27,11 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         public static void MoveItem(ISOCItem item, ScriptableObjectCollection targetCollection, Action onCompleteCallback = null)
         {
-#if  UNITY_EDITOR
-            Undo.RecordObject(item.Collection, "Move Item");
-            Undo.RecordObject(targetCollection, "Move Item");
+#if UNITY_EDITOR
+            Undo.RecordObject(item as ScriptableObject, "Move Item");
 
-            item.Collection.Remove(item);
-            targetCollection.Add(item);
+            // Clear old collection reference, set new one
+            item.ClearCollection();
             item.SetCollection(targetCollection);
 
             string itemPath = AssetDatabase.GetAssetPath(item as ScriptableObject);
@@ -43,11 +42,10 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 string directory = Path.GetDirectoryName(targetCollectionPath);
 
                 string itemsFolderPath = Path.Combine(directory, "Items");
-                bool hasItemsFolder = AssetDatabase.IsValidFolder(itemsFolderPath);
+                AssetDatabaseUtils.CreatePathIfDoesntExist(itemsFolderPath);
 
-                string finalDirectory = hasItemsFolder ? itemsFolderPath : directory;
                 string fileName = Path.GetFileName(itemPath);
-                string newPathCandidate = Path.Combine(finalDirectory, fileName);
+                string newPathCandidate = Path.Combine(itemsFolderPath, fileName);
 
                 if (NormalizePath(itemPath) != NormalizePath(newPathCandidate))
                 {

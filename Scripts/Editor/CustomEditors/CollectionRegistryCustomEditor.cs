@@ -9,34 +9,29 @@ namespace BrunoMikoski.ScriptableObjectCollections
         public override void OnInspectorGUI()
         {
             base.OnInspectorGUI();
-            
-            if (GUILayout.Button("Reload Collections"))
-                CollectionsRegistry.Instance.ReloadCollections();
 
-            if (GUILayout.Button("Validate Collections"))
-                CollectionsRegistry.Instance.ValidateCollections();
+            if (GUILayout.Button("Sync Addressables"))
+                SOCAddressableUtility.SyncAllAddressables();
 
             if (GUILayout.Button("Generate All Existent Static Access Files"))
                 GenerateAllExistentStaticAccessFiles();
-
-            CollectionsRegistry.Instance.SetAutoSearchForCollections(GUILayout.Toggle(CollectionsRegistry.Instance.AutoSearchForCollections, "Auto Search For Collections"));
         }
 
         private void GenerateAllExistentStaticAccessFiles()
         {
-            for (int i = 0; i < CollectionsRegistry.Instance.Collections.Count; i++)
+            var entries = CollectionsRegistry.Instance.Entries;
+            for (int i = 0; i < entries.Count; i++)
             {
-                ScriptableObjectCollection collection = CollectionsRegistry.Instance.Collections[i];
+                var collection = CollectionsRegistry.Instance.GetOrLoadCollection(entries[i].GUID);
+                if (collection == null)
+                    continue;
+
                 if (!CodeGenerationUtility.DoesStaticFileForCollectionExist(collection))
                     continue;
 
+                SOCEditorUtility.RefreshEditorItems(collection);
                 CodeGenerationUtility.GenerateStaticCollectionScript(collection);
             }
-        }
-
-        private void OnEnable()
-        {
-            CollectionsRegistry.Instance.ReloadCollections();
         }
     }
 }

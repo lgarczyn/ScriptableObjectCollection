@@ -1,4 +1,5 @@
-﻿using UnityEditor;
+using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 
 namespace BrunoMikoski.ScriptableObjectCollections
@@ -21,7 +22,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 GUIUtility.ExitGUI();
                 return;
             }
-            
+
             EditorGUILayout.LabelField($"Are you sure you want to delete {targetCollection.name}?");
 
             deleteCollectionItems = EditorGUILayout.ToggleLeft("Delete Collection Items", deleteCollectionItems);
@@ -34,36 +35,32 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 GUI.backgroundColor = Color.red;
                 if (GUILayout.Button("Delete Collection"))
                 {
-                    CollectionsRegistry.Instance.UnregisterCollection(targetCollection);
+                    // Remove registry entry
+                    CollectionsRegistry.Instance.RemoveEntry(targetCollection.GUID);
 
                     if (deleteCollectionItems)
                     {
-                        for (int i = targetCollection.Items.Count - 1; i >= 0; i--)
+                        // Delete all items in the collection's folder
+                        List<ScriptableObject> items = SOCEditorUtility.GetItemsInCollectionFolder(targetCollection);
+                        for (int i = items.Count - 1; i >= 0; i--)
                         {
-                            ScriptableObject collectionItem =
-                                targetCollection.Items[i];
-
-                            targetCollection.Remove(collectionItem);
-                            
-                            AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(collectionItem));
+                            SOCEditorUtility.RemoveItem(items[i], deleteAsset: true);
                         }
                     }
 
                     AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(targetCollection));
-                    
+
                     AssetDatabase.SaveAssets();
                     AssetDatabase.Refresh();
-
                 }
                 GUI.backgroundColor = backgroundColor;
-            
+
                 if (GUILayout.Button("Cancel"))
                 {
                     Close();
                     GUIUtility.ExitGUI();
                 }
             }
-
         }
 
         public static void DeleteCollection(ScriptableObjectCollection targetCollection)

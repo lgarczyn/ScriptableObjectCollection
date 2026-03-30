@@ -146,14 +146,15 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 .GetValue(generator);
             if (shouldRemoveNonGeneratedItems)
             {
-                for (int i = collection.Items.Count - 1; i >= 0; i--)
+                var items = SOCEditorUtility.GetItemsInCollectionFolder(collection);
+                for (int i = items.Count - 1; i >= 0; i--)
                 {
                     // Remove any items for which there isn't a template by the same name.
                     bool foundItemOfSameName = false;
                     for (int j = 0; j < templates.Count; j++)
                     {
                         ItemTemplate itemTemplate = (ItemTemplate)templates[j];
-                        if (collection.Items[i].name == itemTemplate.name)
+                        if (items[i].name == itemTemplate.name)
                         {
                             foundItemOfSameName = true;
                             break;
@@ -162,9 +163,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
                     if (!foundItemOfSameName)
                     {
                         // No corresponding template existed, so remove this item.
-                        ScriptableObject itemToRemove = collection.Items[i];
-                        collection.RemoveAt(i);
-                        AssetDatabase.DeleteAsset(AssetDatabase.GetAssetPath(itemToRemove));
+                        ScriptableObject itemToRemove = items[i];
+                        SOCEditorUtility.RemoveItem(itemToRemove, deleteAsset: true);
                     }
                 }
             }
@@ -181,7 +181,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 if (!TryGetItemTemplateType(itemTemplate, out Type templateItemType))
                     templateItemType = collection.GetItemType();
                 
-                ISOCItem itemInstance = collection.GetOrAddNew(templateItemType, itemTemplate.name);
+                ISOCItem itemInstance = SOCEditorUtility.GetOrAddNewItem(collection, templateItemType, itemTemplate.name);
 
                 CopyFieldsFromTemplateToItem(itemTemplate, itemInstance);
             }

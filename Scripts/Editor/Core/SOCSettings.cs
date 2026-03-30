@@ -246,17 +246,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
             settings.SetStaticFilename(targetNewName);
         }
         
-        public bool GetEnforceIndirectAccess(ScriptableObjectCollection collection)
-        {
-            return GetOrCreateCollectionSettings(collection).EnforceIndirectAccess;
-        }
-        
-        public void SetEnforceIndirectAccess(ScriptableObjectCollection collection, bool enforceIndirectAccess)
-        {
-            CollectionSettings settings = GetOrCreateCollectionSettings(collection);
-            settings.SetEnforceIndirectAccess(enforceIndirectAccess);
-        }
-        
         public CollectionSettings GetOrCreateCollectionSettings(ScriptableObjectCollection collection)
         {
             string path = AssetDatabase.GetAssetPath(collection);
@@ -283,16 +272,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
             settings.Save();
         }
 
-        public void SetWriteAddressableLoadingMethods(ScriptableObjectCollection collection, bool evtNewValue)
-        {
-            CollectionSettings settings = GetOrCreateCollectionSettings(collection);
-            settings.SetWriteAddressableLoadingMethods(evtNewValue);
-        }
-
-        public bool GetWriteAddressableLoadingMethods(ScriptableObjectCollection collection)
-        {
-            return GetOrCreateCollectionSettings(collection).WriteAddressableLoadingMethods;
-        }
 
         public void SaveCollectionSettings(ScriptableObjectCollection collection, bool forceSave = false)
         {

@@ -13,7 +13,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             {
                 if (guid.IsValid())
                     return guid;
-                
+
                 GenerateNewGUID();
                 return guid;
             }
@@ -35,7 +35,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 {
                     if (collectionGUID.IsValid())
                     {
-                        cachedCollection = CollectionsRegistry.Instance.GetCollectionByGUID(collectionGUID);
+                        cachedCollection = CollectionsRegistry.Instance.GetOrLoadCollection(collectionGUID);
                     }
                     else
                     {
@@ -49,23 +49,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
                     hasCachedCollection = cachedCollection != null;
                 }
-                
+
                 return cachedCollection;
-            }
-        }
-        
-        [NonSerialized] private bool didCacheIndex;
-        [NonSerialized] private int cachedIndex;
-        public int Index
-        {
-            get
-            {
-                if (!didCacheIndex)
-                {
-                    didCacheIndex = true;
-                    cachedIndex = Collection.Items.IndexOf(this);
-                }
-                return cachedIndex;
             }
         }
 
@@ -73,7 +58,18 @@ namespace BrunoMikoski.ScriptableObjectCollections
         {
             cachedCollection = collection;
             collectionGUID = cachedCollection.GUID;
+            hasCachedCollection = true;
             ObjectUtility.SetDirty(this);
+        }
+
+        /// <summary>
+        /// Runtime-only: sets the cached collection reference without dirtying the asset.
+        /// Used during Addressables loading to avoid modifying assets at runtime.
+        /// </summary>
+        public void SetCollectionRuntime(ScriptableObjectCollection collection)
+        {
+            cachedCollection = collection;
+            hasCachedCollection = true;
         }
 
         public void ClearCollection()
@@ -83,7 +79,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             collectionGUID = default;
             ObjectUtility.SetDirty(this);
         }
-        
+
         public void GenerateNewGUID()
         {
             guid = LongGuid.NewGuid();

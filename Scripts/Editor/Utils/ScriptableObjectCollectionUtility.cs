@@ -70,7 +70,10 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         public static void GoToItem(ISOCItem socItem)
         {
-            SessionState.SetInt(COLLECTION_CUSTOM_EDITOR_GO_TO_ITEM_INDEX_KEY, socItem.Collection.IndexOf(socItem));
+            // Find the item's index in the editor-time items list
+            var items = SOCEditorUtility.GetItemsInCollectionFolder(socItem.Collection);
+            int index = items.IndexOf(socItem as ScriptableObject);
+            SessionState.SetInt(COLLECTION_CUSTOM_EDITOR_GO_TO_ITEM_INDEX_KEY, index);
             Selection.activeObject = socItem.Collection;
         }
 

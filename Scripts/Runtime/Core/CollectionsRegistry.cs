@@ -1,87 +1,197 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using BrunoMikoski.ScriptableObjectCollections.Core;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.Scripting;
-#if UNITY_EDITOR
-using System.Text;
-using UnityEditor;
-#endif
 
 namespace BrunoMikoski.ScriptableObjectCollections
 {
-    [DefaultExecutionOrder(-1000)]
     [Preserve]
-    public class CollectionsRegistry : ResourceScriptableObjectSingleton<CollectionsRegistry>
+    public class CollectionsRegistry : ScriptableObject
     {
-        private const string NON_AUTO_INITIALIZED_COLLECTIONS_KEY = "NON_AUTO_INITIALIZED_COLLECTIONS";
+        public const string RegistryAddress = "SOC_Registry";
 
         [SerializeField]
-        private List<ScriptableObjectCollection> collections = new List<ScriptableObjectCollection>();
-        public IReadOnlyList<ScriptableObjectCollection> Collections => collections;
-        
-        [SerializeField, HideInInspector]
-        private bool autoSearchForCollections;
-        public bool AutoSearchForCollections => autoSearchForCollections;
+        private List<CollectionMetadata> entries = new List<CollectionMetadata>();
+        public IReadOnlyList<CollectionMetadata> Entries => entries;
+
+        // Runtime cache of loaded collections (lazy-loaded via Addressables)
+        [NonSerialized]
+        private Dictionary<LongGuid, ScriptableObjectCollection> loadedCollections
+            = new Dictionary<LongGuid, ScriptableObjectCollection>();
+
+        [NonSerialized]
+        private Dictionary<LongGuid, AsyncOperationHandle<ScriptableObjectCollection>> collectionHandles
+            = new Dictionary<LongGuid, AsyncOperationHandle<ScriptableObjectCollection>>();
+
+        private static CollectionsRegistry instance;
+        public static CollectionsRegistry Instance
+        {
+            get
+            {
+                if (instance == null)
+                {
+#if UNITY_EDITOR
+                    if (!Application.isPlaying)
+                    {
+                        // In editor, load via AssetDatabase
+                        instance = LoadInEditor();
+                        return instance;
+                    }
+#endif
+                    var handle = Addressables.LoadAssetAsync<CollectionsRegistry>(RegistryAddress);
+                    instance = handle.WaitForCompletion();
+                }
+                return instance;
+            }
+        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Initialize()
         {
-            LoadOrCreateInstance<CollectionsRegistry>();
+            // Pre-load registry (lightweight, just metadata).
+            _ = Instance;
         }
 
-        public bool IsKnowCollection(ScriptableObjectCollection targetCollection)
+#if UNITY_EDITOR
+        private static CollectionsRegistry LoadInEditor()
         {
-            for (int i = 0; i < collections.Count; i++)
+            string[] assets = UnityEditor.AssetDatabase.FindAssets($"t:{nameof(CollectionsRegistry)}");
+            if (assets.Length > 0)
             {
-                ScriptableObjectCollection collection = collections[i];
-                if (collection != null && collection.GUID == targetCollection.GUID)
-                    return true;
+                string path = UnityEditor.AssetDatabase.GUIDToAssetPath(assets[0]);
+                return UnityEditor.AssetDatabase.LoadAssetAtPath<CollectionsRegistry>(path);
             }
 
-            return false;
+            // Create if missing
+            var newInstance = CreateInstance<CollectionsRegistry>();
+            AssetDatabaseUtils.CreatePathIfDoesntExist("Assets/SOC");
+            UnityEditor.AssetDatabase.CreateAsset(newInstance, "Assets/SOC/CollectionsRegistry.asset");
+            UnityEditor.AssetDatabase.SaveAssets();
+            return newInstance;
         }
+#endif
 
-        public void RegisterCollection(ScriptableObjectCollection targetCollection)
+        /// <summary>
+        /// Load a collection by its GUID. Uses WaitForCompletion() for synchronous access.
+        /// Caches the result for subsequent calls.
+        /// </summary>
+        public ScriptableObjectCollection GetOrLoadCollection(LongGuid guid)
         {
-            if (collections.Contains(targetCollection))
-                return;
-            
-            collections.Add(targetCollection);
-            
-            ObjectUtility.SetDirty(this);
-        }
+            if (loadedCollections.TryGetValue(guid, out var cached))
+                return cached;
 
-        public void UnregisterCollection(ScriptableObjectCollection targetCollection)
-        {
-            if (!collections.Contains(targetCollection))
-                return;
+            var meta = FindMetadata(guid);
+            if (string.IsNullOrEmpty(meta.AddressableAddress))
+                return null;
 
-            if (!collections.Remove(targetCollection))
-                return;
-            
-            ObjectUtility.SetDirty(this);
-        }
-
-        public bool TryGetCollectionByName<T>(string targetCollectionName, out ScriptableObjectCollection<T> resultCollection) where T: ScriptableObject, ISOCItem
-        {
-            if (TryGetCollectionByName(targetCollectionName, out ScriptableObjectCollection collection))
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
             {
-                resultCollection = (ScriptableObjectCollection<T>) collection;
-                return true;
+                // In editor, load via AssetDatabase using address to find it
+                return LoadCollectionInEditor(meta);
+            }
+#endif
+
+            var handle = Addressables.LoadAssetAsync<ScriptableObjectCollection>(meta.AddressableAddress);
+            var collection = handle.WaitForCompletion();
+            if (collection != null)
+            {
+                loadedCollections[guid] = collection;
+                collectionHandles[guid] = handle;
+            }
+            return collection;
+        }
+
+#if UNITY_EDITOR
+        private ScriptableObjectCollection LoadCollectionInEditor(CollectionMetadata meta)
+        {
+            string[] guids = UnityEditor.AssetDatabase.FindAssets($"t:{nameof(ScriptableObjectCollection)}");
+            foreach (string assetGuid in guids)
+            {
+                string path = UnityEditor.AssetDatabase.GUIDToAssetPath(assetGuid);
+                var collection = UnityEditor.AssetDatabase.LoadAssetAtPath<ScriptableObjectCollection>(path);
+                if (collection != null && collection.GUID == meta.GUID)
+                {
+                    loadedCollections[meta.GUID] = collection;
+                    return collection;
+                }
+            }
+            return null;
+        }
+#endif
+
+        public void UnloadCollection(LongGuid guid)
+        {
+            if (loadedCollections.TryGetValue(guid, out var collection))
+            {
+                collection.Unload();
+                loadedCollections.Remove(guid);
+            }
+            if (collectionHandles.TryGetValue(guid, out var handle))
+            {
+                if (handle.IsValid())
+                    Addressables.Release(handle);
+                collectionHandles.Remove(guid);
+            }
+        }
+
+        private CollectionMetadata FindMetadata(LongGuid guid)
+        {
+            for (int i = 0; i < entries.Count; i++)
+            {
+                if (entries[i].GUID == guid)
+                    return entries[i];
+            }
+            return default;
+        }
+
+        public bool TryGetCollectionByGUID<T>(LongGuid targetGUID, out T resultCollection)
+            where T : ScriptableObjectCollection
+        {
+            if (targetGUID.IsValid())
+            {
+                var collection = GetOrLoadCollection(targetGUID);
+                if (collection is T typed)
+                {
+                    resultCollection = typed;
+                    return true;
+                }
             }
 
             resultCollection = null;
             return false;
         }
 
-        public bool TryGetCollectionByName(string targetCollectionName, out ScriptableObjectCollection resultCollection)
+        public bool TryGetCollectionByGUID(LongGuid targetGUID, out ScriptableObjectCollection resultCollection)
         {
-            for (int i = 0; i < collections.Count; i++)
+            if (targetGUID.IsValid())
             {
-                ScriptableObjectCollection collection = collections[i];
-                if (collection.name.Equals(targetCollectionName, StringComparison.Ordinal))
+                resultCollection = GetOrLoadCollection(targetGUID);
+                return resultCollection != null;
+            }
+
+            resultCollection = null;
+            return false;
+        }
+
+        public ScriptableObjectCollection GetCollectionByGUID(LongGuid guid)
+        {
+            return GetOrLoadCollection(guid);
+        }
+
+        public bool TryGetCollectionFromItemType(Type targetType, out ScriptableObjectCollection resultCollection)
+        {
+            // Load all collections and find the one whose item type matches
+            foreach (var meta in entries)
+            {
+                var collection = GetOrLoadCollection(meta.GUID);
+                if (collection == null) continue;
+
+                Type itemType = collection.GetItemType();
+                if (itemType != null && itemType.IsAssignableFrom(targetType))
                 {
                     resultCollection = collection;
                     return true;
@@ -92,34 +202,65 @@ namespace BrunoMikoski.ScriptableObjectCollections
             return false;
         }
 
-        
+        public bool TryGetCollectionOfType(Type type, out ScriptableObjectCollection resultCollection)
+        {
+            foreach (var meta in entries)
+            {
+                var collection = GetOrLoadCollection(meta.GUID);
+                if (collection != null && collection.GetType() == type)
+                {
+                    resultCollection = collection;
+                    return true;
+                }
+            }
+
+            resultCollection = null;
+            return false;
+        }
+
+        public bool TryGetCollectionOfType<T>(out T resultCollection)
+            where T : ScriptableObjectCollection
+        {
+            bool didFind = TryGetCollectionOfType(typeof(T), out ScriptableObjectCollection baseCollection);
+            resultCollection = baseCollection as T;
+            return didFind;
+        }
+
         public List<T> GetAllCollectionItemsOfType<T>() where T : ScriptableObject, ISOCItem
         {
             List<T> result = new List<T>();
-            List<ScriptableObject> items = GetAllCollectionItemsOfType(typeof(T));
-            for (int i = 0; i < items.Count; i++)
+            foreach (var meta in entries)
             {
-                ScriptableObject scriptableObjectCollectionItem = items[i];
-                result.Add(scriptableObjectCollectionItem as T);
+                var collection = GetOrLoadCollection(meta.GUID);
+                if (collection == null) continue;
+
+                Type collectionItemType = collection.GetItemType();
+                if (collectionItemType == null || !typeof(T).IsAssignableFrom(collectionItemType))
+                    continue;
+
+                var items = collection.Items;
+                for (int i = 0; i < items.Count; i++)
+                {
+                    if (items[i] is T typed)
+                        result.Add(typed);
+                }
             }
 
             return result;
         }
 
-        public List<ScriptableObject> GetAllCollectionItemsOfType(Type targetItemType)
+        public List<ScriptableObjectCollection> GetCollectionsByItemType(Type targetCollectionItemType)
         {
-            List<ScriptableObject> results = new List<ScriptableObject>();
-            for (int i = 0; i < collections.Count; i++)
+            List<ScriptableObjectCollection> result = new List<ScriptableObjectCollection>();
+            foreach (var meta in entries)
             {
-                ScriptableObjectCollection scriptableObjectCollection = collections[i];
-                Type collectionItemType = scriptableObjectCollection.GetItemType();
-                if (!targetItemType.IsAssignableFrom(collectionItemType))
-                    continue;
+                var collection = GetOrLoadCollection(meta.GUID);
+                if (collection == null) continue;
 
-                results.AddRange(scriptableObjectCollection.Items);
+                if (collection.GetItemType().IsAssignableFrom(targetCollectionItemType))
+                    result.Add(collection);
             }
-
-            return results;
+            return result;
         }
 
         public bool TryGetCollectionsOfItemType(Type targetType, out List<ScriptableObjectCollection> results)
@@ -127,22 +268,13 @@ namespace BrunoMikoski.ScriptableObjectCollections
             List<ScriptableObjectCollection> availables = new();
             int minDistance = int.MaxValue;
 
-            for (int i = 0; i < Collections.Count; i++)
+            foreach (var meta in entries)
             {
-                ScriptableObjectCollection collection = Collections[i];
-
-                if (collection == null)
-                    continue;
+                var collection = GetOrLoadCollection(meta.GUID);
+                if (collection == null) continue;
 
                 Type itemType = collection.GetItemType();
-
-                if (itemType == null)
-                    continue;
-
-                if (itemType == typeof(ISOCItem) || itemType == typeof(ScriptableObjectCollectionItem) || itemType.BaseType == null)
-                    continue;
-
-                if (!itemType.IsAssignableFrom(targetType))
+                if (itemType == null || !itemType.IsAssignableFrom(targetType))
                     continue;
 
                 int distance = GetInheritanceDistance(targetType, itemType);
@@ -182,384 +314,43 @@ namespace BrunoMikoski.ScriptableObjectCollections
             return int.MaxValue;
         }
 
-        public bool TryGetCollectionsOfItemType<T>(out List<ScriptableObjectCollection<T>> results)
-            where T : ScriptableObject, ISOCItem
-        {
-            Type targetType = typeof(T);
-
-            if (TryGetCollectionsOfItemType(targetType, out List<ScriptableObjectCollection> collections))
-            {
-                results = collections.Cast<ScriptableObjectCollection<T>>().ToList();
-                return true;
-            }
-
-            results = null;
-            return false;
-        }
-        
-        public bool TryGetCollectionsOfType<T>(out List<T> inputActionMapCollections, bool allowSubclasses = true) where T : ScriptableObjectCollection
-        {
-            List<T> result = new List<T>();
-            Type targetType = typeof(T);
-            for (int i = 0; i < collections.Count; i++)
-            {
-                ScriptableObjectCollection scriptableObjectCollection = collections[i];
-                Type collectionType = scriptableObjectCollection.GetType();
-                if (collectionType == targetType || (allowSubclasses && collectionType.IsSubclassOf(targetType)))
-                    result.Add((T)scriptableObjectCollection);
-            }
-
-            inputActionMapCollections = result;
-            return result.Count > 0;
-        }
-
-        public List<ScriptableObjectCollection> GetCollectionsByItemType<T>() where T : ScriptableObjectCollectionItem
-        {
-            return GetCollectionsByItemType(typeof(T));
-        }
-
-        public List<ScriptableObjectCollection> GetCollectionsByItemType(Type targetCollectionItemType)
-        {
-            List<ScriptableObjectCollection> result = new List<ScriptableObjectCollection>();
-
-            for (int i = 0; i < collections.Count; i++)
-            {
-                ScriptableObjectCollection scriptableObjectCollection = collections[i];
-                if (scriptableObjectCollection.GetItemType().IsAssignableFrom(targetCollectionItemType))
-                {
-                    result.Add(scriptableObjectCollection);
-                }
-            }
-
-            return result;
-        }
-
-
-        [Obsolete("Use GetCollectionByGUID(ULongGuid guid) is obsolete, please regenerate your static class")]
-        public ScriptableObjectCollection GetCollectionByGUID(string guid)
-        {
-            throw new Exception("GetCollectionByGUID(ULongGuid guid) is obsolete, please regenerate your static class");
-        }
-
-        public ScriptableObjectCollection GetCollectionByGUID(LongGuid guid)
-        {
-            for (int i = 0; i < collections.Count; i++)
-            {
-                if (collections[i] != null && collections[i].GUID == guid)
-                    return collections[i];
-            }
-
-            return null;
-        }
-        
-        public bool TryGetCollectionOfType(Type type, out ScriptableObjectCollection resultCollection)
-        {
-            for (int i = 0; i < collections.Count; i++)
-            {
-                ScriptableObjectCollection scriptableObjectCollection = collections[i];
-                if (scriptableObjectCollection == null)
-                {
-                    ValidateCollections();
-                    resultCollection = null;
-                    return false;
-                }
-                if (scriptableObjectCollection.GetType() == type)
-                {
-                    resultCollection = scriptableObjectCollection;
-                    return true;
-                }
-            }
-
-            resultCollection = null;
-            return false;
-        }
-        
-        public bool TryGetCollectionOfType<T>(out T resultCollection) where T: ScriptableObjectCollection
-        {
-            bool didFind = TryGetCollectionOfType(typeof(T), out ScriptableObjectCollection baseCollection);
-            resultCollection = baseCollection as T;
-            return didFind;
-        }
-        
-        public bool TryGetCollectionFromItemType(Type targetType, out ScriptableObjectCollection resultCollection)
-        {
-            if (TryGetCollectionsOfItemType(targetType, out List<ScriptableObjectCollection> possibleCollections))
-            {
-                if (possibleCollections.Count == 1)
-                {
-                    resultCollection = possibleCollections[0];
-                    return true;
-                }
-            }
-
-            resultCollection = null;
-            return false;
-        }
-
-        public bool TryGetCollectionFromItemType<TargetType>(out ScriptableObjectCollection<TargetType> scriptableObjectCollection) where TargetType : ScriptableObjectCollectionItem
-        {
-            if (TryGetCollectionFromItemType(typeof(TargetType), out ScriptableObjectCollection resultCollection))
-            {
-                scriptableObjectCollection = (ScriptableObjectCollection<TargetType>) resultCollection;
-                return true;
-            }
-
-            scriptableObjectCollection = null;
-            return false;
-        }
-
-
-        public bool TryGetCollectionByGUID<T>(LongGuid targetGUID, out T resultCollection) where T: ScriptableObjectCollection
-        {
-            if (targetGUID.IsValid())
-            {
-                for (int i = 0; i < collections.Count; i++)
-                {
-                    ScriptableObjectCollection scriptableObjectCollection = collections[i];
-                    if (scriptableObjectCollection.GUID == targetGUID)
-                    {
-                        resultCollection = (T) scriptableObjectCollection;
-                        return resultCollection != null;
-                    }
-                }
-            }
-
-            resultCollection = null;
-            return false;
-        }
-        
-        public bool TryGetCollectionByGUID<T>(LongGuid targetGUID, out ScriptableObjectCollection resultCollection) where T : ScriptableObject, ISOCItem
-        {
-            if (targetGUID.IsValid())
-            {
-                if (TryGetCollectionByGUID(targetGUID, out ScriptableObjectCollection foundCollection))
-                {
-                    resultCollection = foundCollection as ScriptableObjectCollection;
-                    return true;
-                }
-            }
-
-            resultCollection = null;
-            return false;
-        }
-
-        public void ReloadCollections()
-        {
 #if UNITY_EDITOR
-            if (Application.isPlaying)
-                return;
-
-            HashSet<ScriptableObjectCollection> foundCollections  = new HashSet<ScriptableObjectCollection>();
-
-            bool changed = false;
-            string[] typeGUIDs = AssetDatabase.FindAssets($"t:{nameof(ScriptableObjectCollection)}");
-
-            for (int j = 0; j < typeGUIDs.Length; j++)
-            {
-                string typeGUID = typeGUIDs[j];
-                ScriptableObjectCollection collection =
-                    AssetDatabase.LoadAssetAtPath<ScriptableObjectCollection>(AssetDatabase.GUIDToAssetPath(typeGUID));
-
-                if (collection == null)
-                    continue;
-
-                if (foundCollections.Contains(collection))
-                    continue;
-
-                if (!collections.Contains(collection))
-                    changed = true;
-
-                collection.RefreshCollection();
-                foundCollections.Add(collection);
-            }
-
-            if (changed)
-            {
-                ValidateCollections();
-                collections = foundCollections.ToList();
-                ObjectUtility.SetDirty(this);
-            }
-#endif
-        }
-
-        public void PreBuildProcess()
+        /// <summary>
+        /// Editor-only: Replace the entries list with new metadata.
+        /// Called by SOCAddressableUtility when syncing.
+        /// </summary>
+        public void SetEntries(List<CollectionMetadata> newEntries)
         {
-            ReloadCollections();
-            RemoveNonAutomaticallyInitializedCollections();
-#if UNITY_EDITOR
-            AssetDatabase.SaveAssets();
-#endif
-        }
-
-        public void RemoveNonAutomaticallyInitializedCollections()
-        {
-#if UNITY_EDITOR
-            StringBuilder removedAssetPaths = new StringBuilder();
-            bool dirty = false;
-            for (int i = collections.Count - 1; i >= 0; i--)
-            {
-                ScriptableObjectCollection collection = collections[i];
-
-                if (collection.AutomaticallyLoaded)
-                    continue;
-
-                collections.Remove(collection);
-                removedAssetPaths.Append($"{AssetDatabase.GetAssetPath(collection)}|");
-
-                dirty = true;
-            }
-
-            if (dirty)
-            {
-                EditorPrefs.SetString(NON_AUTO_INITIALIZED_COLLECTIONS_KEY, removedAssetPaths.ToString());
-                ObjectUtility.SetDirty(this);
-            }
-            else
-            {
-                EditorPrefs.DeleteKey(NON_AUTO_INITIALIZED_COLLECTIONS_KEY);
-            }
-#endif
-        }
-
-        public void ReloadUnloadedCollectionsIfNeeded()
-        {
-#if UNITY_EDITOR
-            string removedAssetPaths = EditorPrefs.GetString(NON_AUTO_INITIALIZED_COLLECTIONS_KEY, string.Empty);
-            if (string.IsNullOrEmpty(removedAssetPaths))
-                return;
-
-            string[] paths = removedAssetPaths.Split('|', StringSplitOptions.RemoveEmptyEntries);
-            for (int i = 0; i < paths.Length; i++)
-            {
-                string path = paths[i];
-                ScriptableObjectCollection collection = AssetDatabase.LoadAssetAtPath<ScriptableObjectCollection>(path);
-                if (collection == null)
-                    continue;
-
-                collections.Add(collection);
-            }
-
-            EditorPrefs.DeleteKey(NON_AUTO_INITIALIZED_COLLECTIONS_KEY);
-            ObjectUtility.SetDirty(this);
-#endif
-        }
-
-        public void PostBuildProcess()
-        {
-            ReloadCollections();
-        }
-
-        public void ValidateCollections()
-        {
-            for (int i = collections.Count - 1; i >= 0; i--)
-            {
-                if (collections[i] == null)
-                    collections.RemoveAt(i);
-            }
-
-            for (int i = collections.Count - 1; i >= 0; i--)
-            {
-                ScriptableObjectCollection collectionA = collections[i];
-                    
-                for (int j = collections.Count - 1; j >= 0; j--)
-                {
-                    ScriptableObjectCollection collectionB = collections[j];
-
-                    if (i == j)
-                        continue;
-                    
-                    if (collectionA.GUID == collectionB.GUID)
-                    {
-                        collectionA.GenerateNewGUID();
-                        Debug.LogWarning(
-                            $"Found duplicated GUID between {collectionA} and {collectionB}, please run the validation again to make sure this is fixed");
-                    }
-                }
-
-                for (int j = collectionA.Items.Count - 1; j >= 0; j--)
-                {
-                    ScriptableObject scriptableObjectA = collectionA.Items[j];
-                    ISOCItem itemA = scriptableObjectA as ISOCItem;
-                    
-                    for (int k = 0; k < collectionA.Items.Count; k++)
-                    {
-                        ScriptableObject scriptableObjectB = collectionA.Items[k];
-                        ISOCItem itemB = scriptableObjectB as ISOCItem;
-
-                        if (j == k)
-                            continue;
-                        
-                        if (itemA.GUID == itemB.GUID)
-                        {
-                            itemA.GenerateNewGUID();
-                            Debug.LogWarning($"Found duplicated GUID between {itemA} and {itemB}, please run the validation again to make sure this is fixed");
-                        }
-                    }
-                }
-            }
-        }
-
-        public void SetAutoSearchForCollections(bool isOn)
-        {
-            if (isOn == autoSearchForCollections)
-                return;
-            
-            autoSearchForCollections = isOn;
+            entries = newEntries;
             ObjectUtility.SetDirty(this);
         }
 
-        public void UpdateAutoSearchForCollections()
+        /// <summary>
+        /// Editor-only: Add or update a single entry.
+        /// </summary>
+        public void AddOrUpdateEntry(CollectionMetadata metadata)
         {
-            foreach (ScriptableObjectCollection collection in collections)
+            for (int i = 0; i < entries.Count; i++)
             {
-                if (!collection)
+                if (entries[i].GUID == metadata.GUID)
                 {
-                    continue;
-                }
-                if (collection != null && !collection.AutomaticallyLoaded)
-                {
-                    SetAutoSearchForCollections(true);
+                    entries[i] = metadata;
+                    ObjectUtility.SetDirty(this);
                     return;
                 }
             }
-
-            SetAutoSearchForCollections(false);
+            entries.Add(metadata);
+            ObjectUtility.SetDirty(this);
         }
 
-        public bool HasUniqueGUID(ISOCItem targetItem)
+        /// <summary>
+        /// Editor-only: Remove entry by GUID.
+        /// </summary>
+        public void RemoveEntry(LongGuid guid)
         {
-            foreach (ScriptableObjectCollection collection in collections)
-            {
-                if (!collection)
-                {
-                    continue;
-                }
-                foreach (ScriptableObject scriptableObject in collection)
-                {
-                    if (scriptableObject is ISOCItem socItem)
-                    {
-                        if(!Equals(socItem, targetItem) && socItem.GUID == targetItem.GUID)
-                            return false;
-                    }
-                }
-            }
-
-            return true;
+            entries.RemoveAll(e => e.GUID == guid);
+            ObjectUtility.SetDirty(this);
         }
-
-        public bool HasUniqueGUID(ScriptableObjectCollection targetCollection)
-        {
-            foreach (ScriptableObjectCollection collection in collections)
-            {
-                if (!collection)
-                {
-                    continue;
-                }
-                if (collection != targetCollection && collection.GUID == targetCollection.GUID)
-                    return false;
-            }
-
-            return true;
-        }
+#endif
     }
 }

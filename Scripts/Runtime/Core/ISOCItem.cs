@@ -8,6 +8,10 @@ namespace BrunoMikoski.ScriptableObjectCollections
         ScriptableObjectCollection Collection { get; }
         string name { get; set; }
         void SetCollection(ScriptableObjectCollection collection);
+        /// <summary>
+        /// Runtime-only: sets the cached collection reference without dirtying the asset.
+        /// </summary>
+        void SetCollectionRuntime(ScriptableObjectCollection collection);
         void GenerateNewGUID();
         void ClearCollection();
     }
