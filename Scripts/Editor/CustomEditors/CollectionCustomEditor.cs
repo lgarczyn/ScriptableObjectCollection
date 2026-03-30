@@ -635,9 +635,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
             menu.AddSeparator("");
 
             // Move to another collection
-            CollectionsRegistry.Instance.TryGetCollectionsOfItemType(
-                collection.GetItemType(), out List<ScriptableObjectCollection> possibleCollections);
-            if (possibleCollections != null)
+            List<ScriptableObjectCollection> possibleCollections = CollectionsRegistry.Instance.GetCollectionsByItemType(
+                collection.GetItemType());
+            if (possibleCollections.Count > 0)
             {
                 foreach (ScriptableObjectCollection otherCollection in possibleCollections)
                 {

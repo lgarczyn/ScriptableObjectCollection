@@ -119,8 +119,15 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (collection == null)
             {
                 // Check that the corresponding collection exists.
-                CollectionsRegistry.Instance.TryGetCollectionOfType(
-                    collectionType, out collection);
+                foreach (var meta in CollectionsRegistry.Instance.Entries)
+                {
+                    var candidate = CollectionsRegistry.Instance.GetOrLoadCollection(meta.GUID);
+                    if (candidate != null && collectionType.IsInstanceOfType(candidate))
+                    {
+                        collection = candidate;
+                        break;
+                    }
+                }
                 if (collection == null)
                 {
                     Debug.LogWarning(

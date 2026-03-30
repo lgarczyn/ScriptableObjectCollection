@@ -18,7 +18,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
             ScriptableObjectCollection collection = null;
             if (collectionGUID.IsValid())
             {
-                collection = CollectionsRegistry.Instance.GetCollectionByGUID(collectionGUID);
+                collection = CollectionsRegistry.Instance.GetOrLoadCollection(collectionGUID);
             }
 
             EditorGUI.BeginDisabledGroup(true);

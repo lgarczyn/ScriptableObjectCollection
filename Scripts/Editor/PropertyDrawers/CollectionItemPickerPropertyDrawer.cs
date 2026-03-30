@@ -273,7 +273,8 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
             if (itemType.IsGenericType)
                 itemType = itemType.GetGenericArguments()[0];
 
-            if (!CollectionsRegistry.Instance.TryGetCollectionsOfItemType(itemType, out possibleCollections))
+            possibleCollections = CollectionsRegistry.Instance.GetCollectionsByItemType(itemType);
+            if (possibleCollections.Count == 0)
                 throw new Exception($"No collection found for item type {itemType}");
 
             propertyPathToPopupList.Add(property.propertyPath, new PopupList<PopupItem>());
