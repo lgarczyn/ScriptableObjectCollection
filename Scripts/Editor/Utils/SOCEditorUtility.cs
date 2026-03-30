@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.AddressableAssets;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -81,11 +82,12 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             AssetDatabase.CreateAsset(newItem, uniqueAssetPath);
 
-            // Ensure the new item is addressable with the collection's label
-            SOCAddressableUtility.EnsureItemAddressable(uniqueAssetPath, collection.AddressableLabel);
-
-            // Update the registry
-            SOCAddressableUtility.SyncAllAddressables();
+            // Ensure the new item is addressable with the collection's label (no-op if Addressables not configured)
+            if (AddressableAssetSettingsDefaultObject.Settings != null)
+            {
+                SOCAddressableUtility.EnsureItemAddressable(uniqueAssetPath, collection.AddressableLabel);
+                SOCAddressableUtility.SyncAllAddressables();
+            }
 
             return newItem;
         }

@@ -134,7 +134,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             SOCEditorUtility.RemoveItem(item, deleteAsset: true);
             AssetDatabase.Refresh();
 
-            Assert.IsFalse(AssetDatabase.LoadAssetAtPath<ScriptableObject>(assetPath) != null);
+            Assert.IsNull(AssetDatabase.LoadAssetAtPath<ScriptableObject>(assetPath));
         }
 
         [Test]
