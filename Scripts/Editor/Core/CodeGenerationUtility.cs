@@ -27,8 +27,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             // Check if the created folder is an editor folder.
             const string editorFolderName = "Editor";
-            bool isEditorFolder = parentFolder.Contains($"/{editorFolderName}/") ||
-                                  parentFolder.EndsWith($"/{editorFolderName}");
+            bool isEditorFolder = parentFolder.Contains($"/{editorFolderName}/", StringComparison.Ordinal) ||
+                                  parentFolder.EndsWith($"/{editorFolderName}", StringComparison.Ordinal);
             if (isEditorFolder)
             {
                 int lastOccurrenceOfEditorName = parentFolder.LastIndexOf($"/{editorFolderName}",

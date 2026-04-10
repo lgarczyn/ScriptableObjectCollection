@@ -31,7 +31,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         private CollectionItemDropdown collectionItemDropdown;
         private ScriptableObject item;
-        private float totalHeight;
 
         private bool showingItemPreview;
 
@@ -201,7 +200,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
             ref Rect position, SerializedProperty property, ScriptableObject collectionItem, GUIContent label,
             Action<ScriptableObject> callback)
         {
-            float originY = position.y;
             position.height = 15;
             bool shouldDrawLabel = OptionsAttribute.LabelMode != LabelMode.NoLabel;
             Rect prefixPosition = shouldDrawLabel ? EditorGUI.PrefixLabel(position, label) : position;
@@ -213,14 +211,13 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 if (currentObject == null)
                     currentObject = collectionItem;
 
-                DrawEditFoldoutButton(ref prefixPosition, collectionItem);
+                DrawEditFoldoutButton(ref prefixPosition);
             }
 
             DrawGotoButton(ref prefixPosition, collectionItem);
             DrawCollectionItemDropDown(ref prefixPosition, property, collectionItem, callback);
             DrawEditorPreview(ref position, collectionItem);
             EditorGUI.indentLevel = indent;
-            totalHeight = position.y - originY;
         }
 
         private void DrawEditorPreview(ref Rect rect, ScriptableObject scriptableObject)
@@ -412,7 +409,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             }
         }
 
-        private void DrawEditFoldoutButton(ref Rect popupRect, ScriptableObject targetItem)
+        private void DrawEditFoldoutButton(ref Rect popupRect)
         {
             if (!OptionsAttribute.ShouldDrawPreviewButton)
                 return;

@@ -382,9 +382,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
             filteredItems.Clear();
 
             var allItems = collection.GetLoadedItems();
-            for (int i = 0; i < allItems.Count; i++)
+            foreach (var collectionItem in allItems)
             {
-                ScriptableObject collectionItem = allItems[i];
                 if (collectionItem.name.IndexOf(targetText, StringComparison.OrdinalIgnoreCase) > -1)
                     filteredItems.Add(collectionItem);
             }

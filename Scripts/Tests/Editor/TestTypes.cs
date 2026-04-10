@@ -1,4 +1,3 @@
-using BrunoMikoski.ScriptableObjectCollections;
 using UnityEngine;
 
 namespace BrunoMikoski.ScriptableObjectCollections.Tests
