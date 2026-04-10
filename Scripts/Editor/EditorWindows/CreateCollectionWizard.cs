@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using JetBrains.Annotations;
 using UnityEditor;
-using UnityEditor.Callbacks;
 using UnityEditor.Compilation;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -65,22 +64,19 @@ namespace BrunoMikoski.ScriptableObjectCollections
         {
             get
             {
-                if (cachedScriptableObjectFolderBase != null) 
-                    return cachedScriptableObjectFolderBase;
-
-                if (!string.IsNullOrEmpty(targetFolder))
+                if (cachedScriptableObjectFolderBase == null)
                 {
-                    cachedScriptableObjectFolderBase = AssetDatabase.LoadAssetAtPath<DefaultAsset>(targetFolder);
-                    return cachedScriptableObjectFolderBase;
+                    if (!string.IsNullOrEmpty(targetFolder))
+                    {
+                        cachedScriptableObjectFolderBase = AssetDatabase.LoadAssetAtPath<DefaultAsset>(targetFolder);
+                    }
+                    else if (!string.IsNullOrEmpty(LastCollectionScriptableObjectPath.Value))
+                    {
+                        cachedScriptableObjectFolderBase =
+                            AssetDatabase.LoadAssetAtPath<DefaultAsset>(LastCollectionScriptableObjectPath.Value);
+                    }
                 }
 
-                if (!string.IsNullOrEmpty(LastCollectionScriptableObjectPath.Value))
-                {
-                    cachedScriptableObjectFolderBase =
-                        AssetDatabase.LoadAssetAtPath<DefaultAsset>(LastCollectionScriptableObjectPath.Value);
-                    return cachedScriptableObjectFolderBase;
-                }
-                
                 return cachedScriptableObjectFolderBase;
             }
             set => cachedScriptableObjectFolderBase = value;
@@ -108,25 +104,25 @@ namespace BrunoMikoski.ScriptableObjectCollections
             get
             {
                 if (ScriptFolderMirrorsScriptableObjectFolder.Value)
+                {
                     return ScriptableObjectFolderBase;
-                
-                if (cachedScriptsFolderBase != null) 
-                    return cachedScriptsFolderBase;
-                
-                if (!string.IsNullOrEmpty(LastScriptsTargetFolder.Value))
-                {
-                    cachedScriptsFolderBase =
-                        AssetDatabase.LoadAssetAtPath<DefaultAsset>(
-                            Path.GetDirectoryName(LastScriptsTargetFolder.Value));
-                    return cachedScriptsFolderBase;
                 }
-                
-                if (!string.IsNullOrEmpty(targetFolder))
+
+                if (cachedScriptsFolderBase == null)
                 {
-                    cachedScriptsFolderBase = AssetDatabase.LoadAssetAtPath<DefaultAsset>(targetFolder);
-                    return cachedScriptsFolderBase;
+                    if (!string.IsNullOrEmpty(LastScriptsTargetFolder.Value))
+                    {
+                        cachedScriptsFolderBase =
+                            AssetDatabase.LoadAssetAtPath<DefaultAsset>(
+                                Path.GetDirectoryName(LastScriptsTargetFolder.Value));
+                    }
+
+                    else if (!string.IsNullOrEmpty(targetFolder))
+                    {
+                        cachedScriptsFolderBase = AssetDatabase.LoadAssetAtPath<DefaultAsset>(targetFolder);
+                    }
                 }
-                
+
                 return cachedScriptsFolderBase;
             }
             set => cachedScriptsFolderBase = value;
@@ -718,9 +714,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
         }
-        
-        
-        class CollectionCustomEditorAssetPostProcessor : AssetPostprocessor
+
+        private class CollectionCustomEditorAssetPostProcessor : AssetPostprocessor
         {
             [UsedImplicitly]
             private static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths,

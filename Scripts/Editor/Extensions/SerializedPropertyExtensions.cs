@@ -43,7 +43,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             {
                 string part = parts[i];
 
-                if (part.EndsWith("]"))
+                if (part.EndsWith("]", StringComparison.Ordinal))
                 {
                     int b = part.IndexOf('[');
                     string name = part.Substring(0, b);
@@ -54,7 +54,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                             BindingFlags.Instance
                             | BindingFlags.NonPublic
                             | BindingFlags.Public);
-                    IList list = fi.GetValue(current) as System.Collections.IList;
+                    IList list = fi.GetValue(current) as IList;
                     current = list[idx];
                 }
                 else
@@ -94,7 +94,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                     serializedProperty.colorValue = (Color)value;
                     break;
                 case SerializedPropertyType.ObjectReference:
-                    serializedProperty.objectReferenceValue = (UnityEngine.Object)value;
+                    serializedProperty.objectReferenceValue = (Object)value;
                     break;
                 case SerializedPropertyType.LayerMask:
                     serializedProperty.intValue = (LayerMask)value;
@@ -202,7 +202,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                     {
                         arrayCounts.Add(-1);
                         string currName = slicedName[index];
-                        if (currName.EndsWith("]"))
+                        if (currName.EndsWith("]", StringComparison.Ordinal))
                         {
                             string[] arraySlice = currName.Split('[', ']');
                             if (arraySlice.Length >= 2)
@@ -221,7 +221,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                         arrayCounts.RemoveAt(i);
                     }
 
-                    if (property.propertyPath.EndsWith("]"))
+                    if (property.propertyPath.EndsWith("]", StringComparison.Ordinal))
                     {
                         string[] slice = property.propertyPath.Split('[', ']');
                         if (slice.Length >= 2)
@@ -291,12 +291,11 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
                 return actualObject;
             }
-            else if (arrayIndex >= 0)
+
+            if (arrayIndex >= 0)
             {
                 if (newObj is IList list)
                     newObj = list[arrayIndex];
-                else if (newObj is Array a)
-                    newObj = a.GetValue(arrayIndex);
             }
 
             return DescendHierarchy<T>(newObj, splitName, splitCounts, depth + 1);

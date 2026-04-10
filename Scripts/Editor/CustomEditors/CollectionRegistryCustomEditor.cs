@@ -20,9 +20,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
         private void GenerateAllExistentStaticAccessFiles()
         {
             var entries = CollectionsRegistry.Instance.Entries;
-            for (int i = 0; i < entries.Count; i++)
+            foreach (CollectionMetadata t in entries)
             {
-                var collection = CollectionsRegistry.Instance.GetOrLoadCollection(entries[i].GUID);
+                var collection = CollectionsRegistry.Instance.GetOrLoadCollection(t.GUID);
                 if (collection == null)
                     continue;
 

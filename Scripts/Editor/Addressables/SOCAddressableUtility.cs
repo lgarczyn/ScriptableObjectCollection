@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
@@ -149,7 +150,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
         {
             string folder = Path.GetDirectoryName(itemPath);
 
-            while (!string.IsNullOrEmpty(folder) && folder.StartsWith("Assets"))
+            while (!string.IsNullOrEmpty(folder) && folder.StartsWith("Assets", StringComparison.Ordinal))
             {
                 string[] collectionGuids = AssetDatabase.FindAssets(
                     $"t:{nameof(ScriptableObjectCollection)}", new[] { folder });

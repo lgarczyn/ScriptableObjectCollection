@@ -5,8 +5,6 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using JetBrains.Annotations;
 using UnityEditor;
-using UnityEditor.AddressableAssets;
-using UnityEditor.AddressableAssets.Settings;
 using UnityEditor.Compilation;
 using UnityEditor.UIElements;
 using UnityEngine;

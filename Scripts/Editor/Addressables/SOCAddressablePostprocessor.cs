@@ -1,4 +1,4 @@
-using System.IO;
+using System;
 using UnityEditor;
 using UnityEngine;
 
@@ -25,9 +25,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 registryDirty |= ProcessAsset(path);
             }
 
-            for (int i = 0; i < movedAssets.Length; i++)
+            foreach (string t in movedAssets)
             {
-                registryDirty |= ProcessAsset(movedAssets[i]);
+                registryDirty |= ProcessAsset(t);
             }
 
             if (registryDirty)
@@ -40,7 +40,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
         private static bool ProcessAsset(string assetPath)
         {
             // Skip non-asset files
-            if (!assetPath.EndsWith(".asset"))
+            if (!assetPath.EndsWith(".asset", StringComparison.Ordinal))
                 return false;
 
             var asset = AssetDatabase.LoadAssetAtPath<ScriptableObject>(assetPath);

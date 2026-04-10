@@ -1,7 +1,6 @@
 using System;
 using UnityEditor;
 using UnityEngine;
-using Object = UnityEngine.Object;
 
 namespace BrunoMikoski.ScriptableObjectCollections
 {

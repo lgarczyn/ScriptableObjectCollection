@@ -11,10 +11,6 @@ namespace BrunoMikoski.ScriptableObjectCollections.Browser
 
         public event ItemClickedDelegate ItemClicked;
 
-        private readonly GUIContent showCollectionContent = new("Show Collection");
-        private readonly GUIContent hideCollectionContent = new("Hide Collection");
-        private readonly GUIContent showHiddenCollectionsContent = new("Show Hidden Collections");
-        private readonly GUIContent hideHiddenCollectionsContent = new("Hide Hidden Collections");
 
         public BrowserTreeView(TreeViewState state)
             : base(state)
@@ -45,12 +41,6 @@ namespace BrunoMikoski.ScriptableObjectCollections.Browser
                 string assetPath = AssetDatabase.GUIDToAssetPath(guid);
                 ScriptableObjectCollection collection =
                     AssetDatabase.LoadAssetAtPath<ScriptableObjectCollection>(assetPath);
-
-                if (BrowserSettings.Instance.IsHiddenCollection(collection.GetType()) &&
-                    !BrowserSettings.Instance.ShowHiddenCollections)
-                {
-                    continue;
-                }
 
                 BrowserTreeViewItem parentItem = new(id++, 0, collection);
 
@@ -117,71 +107,8 @@ namespace BrunoMikoski.ScriptableObjectCollections.Browser
                 false,
                 () => EditorGUIUtility.PingObject(treeViewItem.ScriptableObject));
 
-            menu.AddSeparator(string.Empty);
-
-            if (treeViewItem.ScriptableObject is ScriptableObjectCollection collection)
-            {
-                AddCollectionMenuItem(collection, menu);
-            }
-            else if (treeViewItem.ScriptableObject is ScriptableObjectCollectionItem collectionItem)
-            {
-                AddItemMenuItem(collectionItem, menu);
-            }
-
-            menu.AddSeparator(string.Empty);
-
-            bool showHiddenCollections = BrowserSettings.Instance.ShowHiddenCollections;
-            menu.AddItem(showHiddenCollections ? hideHiddenCollectionsContent : showHiddenCollectionsContent,
-                false,
-                () =>
-                {
-                    BrowserSettings.Instance.ShowHiddenCollections = !showHiddenCollections;
-                    Reload();
-                });
-
             menu.ShowAsContext();
         }
 
-        private void AddCollectionMenuItem(ScriptableObjectCollection collection, GenericMenu menu)
-        {
-            bool isHidden = BrowserSettings.Instance.IsHiddenCollection(collection.GetType());
-            GUIContent content = isHidden ? showCollectionContent : hideCollectionContent;
-
-            if (BrowserSettings.Instance.CanHide(collection))
-            {
-                menu.AddItem(content,
-                    false,
-                    () =>
-                    {
-                        BrowserSettings.Instance.ToggleCollection(collection);
-                        Reload();
-                    });
-            }
-            else
-            {
-                menu.AddDisabledItem(content, isHidden);
-            }
-        }
-
-        private void AddItemMenuItem(ScriptableObjectCollectionItem collectionItem, GenericMenu menu)
-        {
-            bool isHidden = BrowserSettings.Instance.IsHiddenCollection(collectionItem.Collection.GetType());
-            GUIContent content = isHidden ? showCollectionContent : hideCollectionContent;
-
-            if (BrowserSettings.Instance.CanHide(collectionItem.Collection))
-            {
-                menu.AddItem(content,
-                    false,
-                    () =>
-                    {
-                        BrowserSettings.Instance.ToggleCollection(collectionItem.Collection);
-                        Reload();
-                    });
-            }
-            else
-            {
-                menu.AddDisabledItem(content, isHidden);
-            }
-        }
     }
 }
