@@ -299,8 +299,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
             {
                 if (collectionItem == null)
                 {
-                    if (CollectionsRegistry.Instance.TryGetCollectionsOfItemType(currentItemType,
-                            out List<ScriptableObjectCollection> possibleCollections))
+                    List<ScriptableObjectCollection> possibleCollections = CollectionsRegistry.Instance.GetCollectionsByItemType(currentItemType);
+                    if (possibleCollections.Count > 0)
                     {
                         Selection.activeObject = possibleCollections.First();
                     }

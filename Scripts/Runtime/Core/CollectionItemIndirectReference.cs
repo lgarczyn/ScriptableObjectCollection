@@ -85,34 +85,26 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         private bool TryResolveReference(out TObject result)
         {
-            if (CollectionsRegistry.Instance.TryGetCollectionByGUID(CollectionGUID, out ScriptableObjectCollection collection))
+            // GetOrLoadCollection triggers lazy Addressables loading if needed
+            var collection = CollectionsRegistry.Instance.GetOrLoadCollection(CollectionGUID);
+            if (collection != null)
             {
                 if (collection.TryGetItemByGUID(CollectionItemGUID, out ScriptableObject item))
                 {
                     result = item as TObject;
                     return true;
                 }
-            }
-            else
-            {
-                if (!string.IsNullOrEmpty(collectionLastKnowName))
-                {
-                    if (CollectionsRegistry.Instance.TryGetCollectionByName(collectionLastKnowName, out collection))
-                    {
-                        SetCollection(collection);
 
-                        if (!string.IsNullOrEmpty(itemLastKnownName))
+                // Fallback: try by name within the same collection
+                if (!string.IsNullOrEmpty(itemLastKnownName))
+                {
+                    if (collection.TryGetItemByName(itemLastKnownName, out ScriptableObject possibleResult))
+                    {
+                        result = possibleResult as TObject;
+                        if (result != null)
                         {
-                            if(collection.TryGetItemByName(itemLastKnownName, out ScriptableObject possibleResult))
-                            {
-                                result = possibleResult as TObject;
-                                if (result == null)
-                                {
-                                    return false;
-                                }
-                                SetCollectionItem(result);
-                                return true;
-                            }
+                            SetCollectionItem(result);
+                            return true;
                         }
                     }
                 }
