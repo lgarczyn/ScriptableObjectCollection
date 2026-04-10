@@ -5,14 +5,14 @@ using System.Reflection;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
 using Object = UnityEngine.Object;
 
 namespace BrunoMikoski.ScriptableObjectCollections
 {
-#if UNITY_2022_2_OR_NEWER
-    [CustomPropertyDrawer(typeof(ISOCItem), true)]
-#endif
-    [CustomPropertyDrawer(typeof(ScriptableObjectCollectionItem), true)]
+    [CustomPropertyDrawer(typeof(ISOCItem),                                        true)]
+    [CustomPropertyDrawer(typeof(ScriptableObjectCollectionItem),                  true)]
+    [CustomPropertyDrawer(typeof(AssetReferenceT<ScriptableObjectCollectionItem>), true)]
     public class CollectionItemPropertyDrawer : PropertyDrawer
     {
         private const float BUTTON_WIDTH = 30;
