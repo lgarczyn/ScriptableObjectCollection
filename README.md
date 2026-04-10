@@ -71,17 +71,8 @@ Check the [FAQ](https://github.com/brunomikoski/ScriptableObjectCollection/wiki/
 </details>
 
 <details>
-  <summary>How I can propery serialize this for Save Game or Backend data</summary>
-There's a couple of ways of dealing with this, the easiest one is to use the `IndirectReference` when you need this data to be serialized, this will only store 2 GUIDs.
- Another option is writing a proper parser using the ISerializationCallback.
-</details>
-
-<details>
-  <summary>Collection Registry on the Resources Folder</summary>
-Since the CollectionsRegistry is inside the Resources folder, every reference this has to a collection and to all the collectables will be inside the Unity Resources bundle, and if you have a lot of references for expensive stuff, this can increase your startup time significantly, there are 2 things you should keep in mind: 
-1. Use the Automatically Loaded items for items that should be available for the lifetime of your game
-2. If you want to use this for more expensive stuff, let's say all the gameplay prefabs, you can uncheck the automatic initialization of this collection, and register the collection on your loading by using `CollectionsRegistry.Instance.RegisterCollection(Collection);` and removing it when they are not necessary anymore.
-3. You can convert the items of a collection to references by using the "Convert To References" button in the collection inspector. This allows for more flexibility to load and unload items individually. These items are inserted into an Addressables group.
+  <summary>How I can properly serialize this for Save Game or Backend data</summary>
+Each collection item has a stable GUID (LongGuid) that can be used for serialization. You can store the GUID and look up the item at load time via `TryGetItemByName` or by using the generated static accessors.
 </details>
  
  <details>
@@ -103,7 +94,7 @@ There are two Draw Types for now:<br /><br />
  
  
 ## System Requirements
-Unity 2018.4.0 or later versions
+Unity 2022.2 or later versions. Requires the Addressables package (1.19.0+).
 
 
 ## How to install
@@ -143,64 +134,3 @@ You can also add it directly from GitHub on Unity 2019.4+. Note that you won't b
 </details>
 
 
-## Upgrading Guide: < 2.3.0 ➡️ 2.4.0
-
-<details>
-<summary><strong>⚠️ Upgrading from &lt;2.3.0 to 2.4.0 — Important Migration Notes</strong></summary>
-
-
-If you are upgrading **ScriptableObjectCollection** from a version prior to **2.3.0** to **2.4.0**, please read this section carefully to avoid breaking changes and compile errors.
-
----
-
-### 1. Generated Files Now Use the `.g.cs` Suffix
-
-- All generated static files now use the `.g.cs` suffix.
-- **Action Required:**  
-  Manually **delete any previously generated files that do NOT have the `.g.cs` suffix** from your project.  
-  Keeping these files may cause compile errors after the upgrade.
-
----
-
-### 2. Namespace and Filename Settings Have Moved
-
-- Namespace and filename settings are now stored in the `.meta` file instead of in the generator/collection files.
-- Any custom settings will need to be **reconfigured** after the upgrade.
-- Old settings are not automatically migrated.
-
----
-
-### 3. Breaking Changes & Versioning
-
-- This release introduces breaking changes that may cause compile errors if migration steps are not followed.
-- Make sure to **read and follow these instructions** before or after upgrading.
-
----
-
-### 4. Automatic Cleanup
-
-- Starting from **2.4.0**, the package attempts to **automatically delete obsolete generated `.cs` files** (without the `.g.cs` suffix) during the upgrade process.
-- However, always **double-check** your generated files and remove any leftovers if necessary.
-
----
-
-### 5. Troubleshooting
-
-If you encounter problems after upgrading:
-- Ensure **all old generated files** without `.g.cs` are deleted.
-- Check your collection settings, as these may need to be **set again** due to the migration to `.meta` files.
-- Confirm you are using the latest version (**2.4.0** or newer).
-- If issues persist, please [open an issue](https://github.com/brunomikoski/ScriptableObjectCollection/issues).
-
----
-
-### **Migration Steps Checklist**
-
-1. **Delete all previously generated files that do not end with `.g.cs`.**
-2. **Update the package to version 2.4.0.**
-3. **Reconfigure your namespace/filename settings if needed.**
-4. **Verify your project compiles and all generators work as expected.**
-
----
-
-</details>

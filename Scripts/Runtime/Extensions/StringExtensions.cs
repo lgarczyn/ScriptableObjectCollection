@@ -25,7 +25,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
         private const string ASSETS_FOLDER = "Assets";
         
         private static readonly string[] RESERVED_KEYWORDS = {
-            "abstract", "as", "base", " bool", " break", "byte", "case", "catch", "char", "checked", "class", "const",
+            "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char", "checked", "class", "const",
             "continue", "decimal", "default", "delegate", "do", "double", "else", "enum", "event", "explicit", "extern",
             "false", "finally", "fixed", "float", "for", "foreach", "goto", "if", "implicit", "in", "int", "interface",
             "internal", "is", "lock", "long", "namespace", "new", "null", "object", "operator", "out", "override",
@@ -33,8 +33,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
             "sizeof", "stackalloc", "static", "string", "struct", "switch", "this", "throw", "true", "try", "typeof",
             "uint", "ulong", "unchecked", "unsafe", "ushort", "using", "virtual", "void", "volatile", "while", "add",
             "alias", "ascending", "async", "await", "by", "descending", "dynamic", "equals", "from", "get", "global",
-            "group", "into", "join", "let", "nameof", "notnull", "on", "orderby", "partial", "partial", "remove",
-            "select", "set", "unmanaged", "value", "var", "when", "where", "where", "with", "yield","values"
+            "group", "into", "join", "let", "nameof", "notnull", "on", "orderby", "partial", "remove",
+            "select", "set", "unmanaged", "value", "var", "when", "where", "with", "yield", "values"
         };
 
         public static string Sanitize(this string input)
@@ -294,12 +294,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             return name.Substring(prefix.Length);
         }
-    
-        public static string RemovePrefix(this string name, char prefix)
-        {
-            return RemovePrefix(name, prefix.ToString());
-        }
-        
+
         public static string RemoveSuffix(this string name, string suffix)
         {
             if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(suffix))
@@ -309,11 +304,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 return name;
 
             return name.Substring(0, name.Length - suffix.Length);
-        }
-    
-        public static string RemoveSuffix(this string name, char suffix)
-        {
-            return RemoveSuffix(name, suffix.ToString());
         }
         
         private static string RemoveAssetsPrefix(this string path)
@@ -331,7 +321,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
         {
             absolutePath = absolutePath.ToPathWithConsistentSeparators();
             string projectPath = RemoveSuffix(Application.dataPath, ASSETS_FOLDER);
-            projectPath = RemoveSuffix(projectPath, Path.AltDirectorySeparatorChar);
+            projectPath = RemoveSuffix(projectPath, Path.AltDirectorySeparatorChar.ToString());
             
             string relativePath = ToPathWithConsistentSeparators(Path.GetRelativePath(projectPath, absolutePath));
             return relativePath;

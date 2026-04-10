@@ -23,12 +23,5 @@
     "name": "Bruno Mikoski",
     "url": "https://www.brunomikoski.com"
   },
-  "type": "library",
-  "samples": [
-    {
-      "displayName": "Addressables Loaded Collection",
-      "description": "This sample shows how you can leverage the ScriptableObjectCollection to create a collection that is managed by the Addressables system. Allowing you to update it on the fly and also show some of the new features of the 2.3.1 version",
-      "path": "Samples~/AddressablesCollection"
-    }
-  ]
+  "type": "library"
 }
