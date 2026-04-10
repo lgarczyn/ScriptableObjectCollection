@@ -131,7 +131,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 string[] tensMap = { "zero", "ten", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety" };
 
                 if (number < 20)
+                {
                     words += unitsMap[number];
+                }
                 else
                 {
                     words += tensMap[number / 10];
@@ -174,6 +176,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
         /// Gets the human readable version of programmer text, like a variable name.
         /// </summary>
         /// <param name="programmerText">The programmer text.</param>
+        /// <param name="wordSeparator">The word separator instead of spaces</param>
         /// <returns>The human readable equivalent of the programmer text.</returns>
         public static string ToHumanReadable(this string programmerText, char wordSeparator = DEFAULT_SEPARATOR)
         {
@@ -186,7 +189,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             string result = "";
 
             // First remove the m_ prefix if it exists.
-            if (programmerText.StartsWith(HUNGARIAN_PREFIX))
+            if (programmerText.StartsWith(HUNGARIAN_PREFIX, StringComparison.Ordinal))
                 programmerText = programmerText.Substring(HUNGARIAN_PREFIX.Length);
 
             // Deal with any miscellanneous spaces.
@@ -274,7 +277,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
         {
             foreach (string prefix in prefixes)
             {
-                if (path.StartsWith(prefix))
+                if (path.StartsWith(prefix, StringComparison.Ordinal))
                     return true;
             }
 
@@ -286,7 +289,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(prefix))
                 return name;
 
-            if (!name.StartsWith(prefix))
+            if (!name.StartsWith(prefix, StringComparison.Ordinal))
                 return name;
 
             return name.Substring(prefix.Length);
@@ -302,7 +305,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(suffix))
                 return name;
 
-            if (!name.EndsWith(suffix))
+            if (!name.EndsWith(suffix, StringComparison.Ordinal))
                 return name;
 
             return name.Substring(0, name.Length - suffix.Length);

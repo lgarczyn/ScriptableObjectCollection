@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using UnityEngine;
 
 namespace BrunoMikoski.ScriptableObjectCollections
 {
-    public static partial class TypeExtensions
+    public static class TypeExtensions
     {
         private static bool IsList(this Type type)
         {

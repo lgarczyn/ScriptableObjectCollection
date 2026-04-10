@@ -209,37 +209,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
             indentation++;
         }
 
-        public static void AppendHeader(StreamWriter writer, ref int indentation, string nameSpace, string classAttributes, string classDeclaration, params string[] directives)
-        {
-            writer.WriteLine("//  Automatically generated");
-            writer.WriteLine("//");
-            writer.WriteLine();
-            for (int i = 0; i < directives.Length; i++)
-            {
-                string directive = directives[i];
-                if (string.IsNullOrEmpty(directive))
-                    continue;
-                writer.WriteLine($"using {directive};");
-            }
-
-            writer.WriteLine();
-
-            bool hasNameSpace = !string.IsNullOrEmpty(nameSpace);
-            if (hasNameSpace)
-            {
-                writer.WriteLine($"namespace {nameSpace}");
-                writer.WriteLine("{");
-                indentation++;
-            }
-
-            if (!string.IsNullOrEmpty(classAttributes))
-                writer.WriteLine($"{GetIndentation(indentation)}{classAttributes}");
-
-            writer.WriteLine($"{GetIndentation(indentation)}{classDeclaration}");
-            writer.WriteLine(GetIndentation(indentation) + "{");
-            indentation++;
-        }
-
         public static void AppendLine(StreamWriter writer, int indentation, string input = "")
         {
             writer.WriteLine($"{GetIndentation(indentation)}{input}");

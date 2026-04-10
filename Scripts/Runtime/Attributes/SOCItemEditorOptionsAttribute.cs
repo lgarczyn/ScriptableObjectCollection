@@ -13,7 +13,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
     {
         Default = 0,
         NoLabel = 1,
-        //LabelOnSeparateLine = 2, // TODO
     }
     
     
