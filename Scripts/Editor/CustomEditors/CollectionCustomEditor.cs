@@ -22,8 +22,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         [SerializeField]
         private VisualTreeAsset visualTreeAsset;
-        [SerializeField]
-        private VisualTreeAsset collectionItemVisualTreeAsset;
 
         [NonSerialized]
         private Type generatorType;
@@ -214,8 +212,13 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         private VisualElement MakeCollectionItemListItem()
         {
-            TemplateContainer makeCollectionItemListItem = collectionItemVisualTreeAsset.CloneTree();
-            return makeCollectionItemListItem;
+            VisualElement root = new();
+            Foldout foldout = new() { name = "header-foldout", value = false };
+            foldout.AddToClassList("header-foldout");
+            root.Add(foldout);
+            TextField renameField = new() { name = "rename-text-field", isDelayed = true, style = { display = DisplayStyle.None } };
+            root.Add(renameField);
+            return root;
         }
 
         private void BindCollectionItemListItem(VisualElement targetElement, int targetIndex)
@@ -227,22 +230,21 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (targetItem == null)
                 return;
 
-            IMGUIContainer imguiContainer = targetElement.Q<IMGUIContainer>("imgui-container");
             Foldout foldout = targetElement.Q<Foldout>("header-foldout");
             foldout.viewDataKey = targetIndex.ToString();
             foldout.text = targetItem.name;
 
-            Editor editor = EditorCache.GetOrCreateEditorForObject(targetItem);
+            // Replace any previous InspectorElement
+            var existing = foldout.Q<InspectorElement>();
+            existing?.RemoveFromHierarchy();
+
+            InspectorElement inspector = new(targetItem);
+            foldout.Add(inspector);
 
             Label titleLabel = foldout.Q<Label>();
             titleLabel.RegisterCallback<MouseDownEvent, int>(RenameItemAtIndex, targetIndex, TrickleDown.TrickleDown);
 
             targetElement.parent.parent.RegisterCallback<MouseUpEvent, int>(ShowOptionsForIndex, targetIndex);
-
-            imguiContainer.onGUIHandler = () =>
-            {
-                editor.OnInspectorGUI();
-            };
         }
 
         private void OnKeyUpOnCollectionListView(KeyUpEvent evt)
