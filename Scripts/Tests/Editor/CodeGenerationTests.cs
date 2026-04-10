@@ -2,13 +2,12 @@ using System.IO;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.TestTools;
 
 namespace BrunoMikoski.ScriptableObjectCollections.Tests
 {
     /// <summary>
     /// Tests for static access code generation.
-    /// Creates real assets, generates the .g.cs file, and verifies its content.
+    /// Creates real assets once, bakes GUIDs, generates the .g.cs file, and verifies its content.
     /// </summary>
     [TestFixture]
     public class CodeGenerationTests
@@ -16,13 +15,26 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
         private const string TestFolder = "Assets/SOCCodeGenTestTemp";
         private const string ItemsFolder = "Assets/SOCCodeGenTestTemp/Items";
         private const string ScriptsFolder = "Assets/SOCCodeGenTestTemp/Scripts";
-        private TestCollection collection;
-        private TestItem itemAlpha;
-        private TestItem itemBeta;
-        private string generatedFilePath;
+        private static TestCollection collection;
+        private static TestItem itemAlpha;
+        private static TestItem itemBeta;
+        private static string generatedFilePath;
 
-        [SetUp]
-        public void SetUp()
+        private static void BakeGuid(Object asset)
+        {
+            string path = AssetDatabase.GetAssetPath(asset);
+            string guid = AssetDatabase.AssetPathToGUID(path);
+            var so = new SerializedObject(asset);
+            var prop = so.FindProperty("m_Guid");
+            if (prop != null)
+            {
+                prop.stringValue = guid;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+
+        [OneTimeSetUp]
+        public void OneTimeSetUp()
         {
             AssetDatabaseUtils.CreatePathIfDoesntExist(TestFolder);
             AssetDatabaseUtils.CreatePathIfDoesntExist(ItemsFolder);
@@ -48,8 +60,23 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             itemAlpha = AssetDatabase.LoadAssetAtPath<TestItem>($"{ItemsFolder}/Alpha.asset");
             itemBeta = AssetDatabase.LoadAssetAtPath<TestItem>($"{ItemsFolder}/Beta.asset");
 
-            if (collection == null)
-                Assert.Ignore("Collection could not be loaded after Refresh");
+            Assert.IsNotNull(collection, "Collection failed to load after Refresh");
+            Assert.IsNotNull(itemAlpha, "Alpha item failed to load after Refresh");
+            Assert.IsNotNull(itemBeta, "Beta item failed to load after Refresh");
+
+            // Bake GUIDs
+            BakeGuid(collection);
+            BakeGuid(itemAlpha);
+            BakeGuid(itemBeta);
+
+            // Set up Addressables
+            if (UnityEditor.AddressableAssets.AddressableAssetSettingsDefaultObject.Settings != null)
+            {
+                string collectionGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(collection));
+                SOCAddressableUtility.EnsureCollectionAddressable(collection, AssetDatabase.GetAssetPath(collection));
+                SOCAddressableUtility.EnsureItemAddressable(AssetDatabase.GetAssetPath(itemAlpha), collectionGuid);
+                SOCAddressableUtility.EnsureItemAddressable(AssetDatabase.GetAssetPath(itemBeta), collectionGuid);
+            }
 
             // Configure settings
             SOCSettings.Instance.SetNamespaceForCollection(collection, "TestNamespace");
@@ -59,18 +86,16 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
 
             generatedFilePath = Path.Combine(ScriptsFolder, "TestCodeGenCollectionStatic.g.cs");
 
-            // Generate the static file (code gen uses AssetDatabase, not Addressables)
-            LogAssert.ignoreFailingMessages = true;
+            // Generate the static file once
             CodeGenerationUtility.GenerateStaticCollectionScript(collection);
-            LogAssert.ignoreFailingMessages = false;
 
             // Re-resolve after code gen's Refresh
             itemAlpha = AssetDatabase.LoadAssetAtPath<TestItem>($"{ItemsFolder}/Alpha.asset");
             itemBeta = AssetDatabase.LoadAssetAtPath<TestItem>($"{ItemsFolder}/Beta.asset");
         }
 
-        [TearDown]
-        public void TearDown()
+        [OneTimeTearDown]
+        public void OneTimeTearDown()
         {
             if (AssetDatabase.IsValidFolder(TestFolder))
                 AssetDatabase.DeleteAsset(TestFolder);

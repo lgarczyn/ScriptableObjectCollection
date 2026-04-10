@@ -22,7 +22,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             public ScriptableObjectCollection Collection;
             public string Path;     // e.g. "Assets/Data/Enemies/EnemyCollection.asset"
             public string Folder;   // e.g. "Assets/Data/Enemies/"
-            public string Label;    // e.g. "soc_efca2e5662c01e941923b779e992d1cf"
+            public string Label;    // The collection's asset GUID, used as label for its items
         }
 
         /// <summary>
@@ -74,7 +74,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                     Collection = collection,
                     Path = path,
                     Folder = folder,
-                    Label = $"soc_{assetGuid}",
+                    Label = assetGuid,
                 });
             }
         }

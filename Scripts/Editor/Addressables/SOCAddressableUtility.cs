@@ -48,7 +48,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 Type itemType = collection.GetItemType();
                 if (itemType != null)
                 {
-                    string label = $"soc_{AssetDatabase.AssetPathToGUID(path)}";
+                    string label = AssetDatabase.AssetPathToGUID(path);
                     string[] itemGuids = AssetDatabase.FindAssets($"t:{itemType.Name}", new[] { folder });
                     foreach (string itemGuid in itemGuids)
                     {

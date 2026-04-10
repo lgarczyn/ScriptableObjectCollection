@@ -22,9 +22,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         /// <summary>
         /// Addressable label applied to all items belonging to this collection.
-        /// Derived from the baked GUID.
+        /// Same as the collection's asset GUID.
         /// </summary>
-        public string AddressableLabel => $"soc_{m_Guid}";
+        public string AddressableLabel => m_Guid;
 
         [NonSerialized] private List<ScriptableObject> loadedItems;
         [NonSerialized] private AsyncOperationHandle<IList<ScriptableObject>> itemsHandle;
