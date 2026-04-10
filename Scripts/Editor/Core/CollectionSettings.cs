@@ -7,7 +7,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
     [Serializable]
     public class CollectionSettings
     {
-        public LongGuid Guid;
         public string Namespace;
         public string StaticFilename;
         public string ParentFolderPath;
@@ -22,7 +21,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         public CollectionSettings(ScriptableObjectCollection targetCollection)
         {
-            Guid = targetCollection.GUID;
             string targetNamespace = targetCollection.GetItemType().Namespace;
             if (string.IsNullOrEmpty(targetNamespace) && !string.IsNullOrEmpty(SOCSettings.Instance.NamespacePrefix))
                 targetNamespace = $"{SOCSettings.Instance.NamespacePrefix}";

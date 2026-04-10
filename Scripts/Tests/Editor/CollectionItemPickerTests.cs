@@ -26,7 +26,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             AssetDatabaseUtils.CreatePathIfDoesntExist(ItemsFolder);
 
             collection = ScriptableObject.CreateInstance<TestCollection>();
-            collection.GenerateNewGUID();
+
             AssetDatabase.CreateAsset(collection, $"{TestFolder}/PickerTestCollection.asset");
 
             itemA = ScriptableObject.CreateInstance<TestItem>();

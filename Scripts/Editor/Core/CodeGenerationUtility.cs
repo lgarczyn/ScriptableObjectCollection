@@ -386,7 +386,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             AppendLine(writer, indentation);
 
             // Values property - loads collection via Addressables on first access
-            string collectionAddress = ScriptableObjectCollection.GetAddressableAddress(collection.GUID);
+            string collectionAddress = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(collection));
             AppendLine(writer, indentation,
                 $"public static {collection.GetType().FullName} {publicValuesName}");
             AppendLine(writer, indentation, "{");

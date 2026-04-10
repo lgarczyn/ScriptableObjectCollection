@@ -79,7 +79,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             var group = GetOrCreateSOCGroup(settings);
             var entry = settings.CreateOrMoveEntry(assetGuid, group, readOnly: false);
-            entry.address = GetCollectionAddress(collection);
+            entry.address = assetGuid; // Use Unity asset GUID as address, same as items
 
             settings.AddLabel(CollectionsLabel);
             if (!entry.labels.Contains(CollectionsLabel))
@@ -138,11 +138,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
             }
 
             return null;
-        }
-
-        public static string GetCollectionAddress(ScriptableObjectCollection collection)
-        {
-            return $"soc_collection_{collection.GUID.ToBase64String()}";
         }
 
         public static AddressableAssetGroup GetOrCreateSOCGroup(AddressableAssetSettings settings)

@@ -73,18 +73,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
         }
 
         /// <summary>
-        /// Find an existing item by name, or create a new one if not found.
-        /// Used by the generator system.
-        /// </summary>
-        public static ISOCItem GetOrAddNewItem(ScriptableObjectCollection collection, Type itemType, string targetName)
-        {
-            if (collection.TryGetItemByName(targetName, out ScriptableObject existing))
-                return existing as ISOCItem;
-
-            return AddNewItem(collection, itemType, targetName) as ISOCItem;
-        }
-
-        /// <summary>
         /// Move an item to a different collection's folder.
         /// </summary>
         public static void MoveItemToCollection(ISOCItem item, ScriptableObjectCollection targetCollection)

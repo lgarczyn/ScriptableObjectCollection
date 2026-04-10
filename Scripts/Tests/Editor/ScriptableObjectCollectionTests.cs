@@ -15,7 +15,6 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
         public void SetUp()
         {
             collection = ScriptableObject.CreateInstance<TestCollection>();
-            collection.GenerateNewGUID();
         }
 
         [TearDown]
@@ -24,60 +23,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             Object.DestroyImmediate(collection);
         }
 
-        // --- GUID ---
-
-        [Test]
-        public void NewCollection_HasValidGUID()
-        {
-            Assert.IsTrue(collection.GUID.IsValid());
-        }
-
-        [Test]
-        public void GenerateNewGUID_ChangesGUID()
-        {
-            LongGuid original = collection.GUID;
-            collection.GenerateNewGUID();
-            Assert.AreNotEqual(original, collection.GUID);
-        }
-
-        // --- Addressable addresses ---
-
-        [Test]
-        public void AddressableLabel_ContainsBase64Guid()
-        {
-            string label = collection.AddressableLabel;
-            Assert.IsTrue(label.StartsWith("soc_", StringComparison.Ordinal));
-            Assert.IsTrue(label.Length > 4);
-        }
-
-        [Test]
-        public void AddressableLabel_IsDeterministic()
-        {
-            Assert.AreEqual(collection.AddressableLabel, collection.AddressableLabel);
-        }
-
-        [Test]
-        public void GetAddressableAddress_ContainsPrefix()
-        {
-            string address = ScriptableObjectCollection.GetAddressableAddress(collection.GUID);
-            Assert.IsTrue(address.StartsWith("soc_collection_", StringComparison.Ordinal));
-        }
-
-        [Test]
-        public void GetAddressableAddress_IsDeterministic()
-        {
-            string addr1 = ScriptableObjectCollection.GetAddressableAddress(collection.GUID);
-            string addr2 = ScriptableObjectCollection.GetAddressableAddress(collection.GUID);
-            Assert.AreEqual(addr1, addr2);
-        }
-
-        [Test]
-        public void AddressableAddress_MatchesStaticMethod()
-        {
-            Assert.AreEqual(
-                ScriptableObjectCollection.GetAddressableAddress(collection.GUID),
-                collection.AddressableAddress);
-        }
+        // --- Addressable labels ---
 
         [Test]
         public void AllCollectionsLabel_HasExpectedValue()
@@ -104,7 +50,6 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
         [Test]
         public void LoadSync_WithInvalidKey_DoesNotThrow()
         {
-            // Collection has no Addressable entries — LoadSync should handle gracefully
             LogAssert.ignoreFailingMessages = true;
             Assert.DoesNotThrow(() => collection.LoadSync());
             LogAssert.ignoreFailingMessages = false;
@@ -174,21 +119,11 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             Assert.IsNull(result);
         }
 
-        // --- LoadByGUID ---
-
-        [Test]
-        public void LoadByGUID_WithInvalidGuid_ReturnsNull()
-        {
-            var result = ScriptableObjectCollection.LoadByGUID(default);
-            Assert.IsNull(result);
-        }
-
-        // --- FindAll / FindByItemType error handling ---
+        // --- FindAll error handling ---
 
         [Test]
         public void FindAll_WithNoAddressables_DoesNotThrow()
         {
-            // May return empty or throw internally; should not crash
             LogAssert.ignoreFailingMessages = true;
             Assert.DoesNotThrow(() =>
             {

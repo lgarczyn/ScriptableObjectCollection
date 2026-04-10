@@ -11,62 +11,23 @@ namespace BrunoMikoski.ScriptableObjectCollections
     {
         public const string AllCollectionsLabel = "soc_collections";
 
-        [SerializeField, HideInInspector]
-        private LongGuid guid;
-        public LongGuid GUID
+        /// <summary>
+        /// Addressable label applied to all items belonging to this collection.
+        /// Uses the collection's Unity asset GUID for uniqueness.
+        /// Only available in editor (requires AssetDatabase).
+        /// </summary>
+        public string AddressableLabel
         {
             get
             {
 #if UNITY_EDITOR
-                if (!guid.IsValid())
-                    GenerateNewGUID();
+                string assetGuid = UnityEditor.AssetDatabase.AssetPathToGUID(
+                    UnityEditor.AssetDatabase.GetAssetPath(this));
+                return $"soc_{assetGuid}";
+#else
+                throw new InvalidOperationException("AddressableLabel is only available in editor.");
 #endif
-                return guid;
             }
-        }
-
-        public string AddressableLabel => $"soc_{GUID.ToBase64String()}";
-        public string AddressableAddress => GetAddressableAddress(GUID);
-
-        public static string GetAddressableAddress(LongGuid collectionGuid)
-        {
-            return $"soc_collection_{collectionGuid.ToBase64String()}";
-        }
-
-        public static ScriptableObjectCollection LoadByGUID(LongGuid collectionGuid)
-        {
-            if (!collectionGuid.IsValid())
-                return null;
-
-            string address = GetAddressableAddress(collectionGuid);
-            var handle = Addressables.LoadAssetAsync<ScriptableObjectCollection>(address);
-            return handle.WaitForCompletion();
-        }
-
-        /// <summary>
-        /// Load all collections via Addressables using the shared label.
-        /// Works in both editor and runtime.
-        /// </summary>
-        public static List<ScriptableObjectCollection> FindAll()
-        {
-            var handle = Addressables.LoadAssetsAsync<ScriptableObjectCollection>(AllCollectionsLabel, null);
-            var results = handle.WaitForCompletion();
-            return new List<ScriptableObjectCollection>(results);
-        }
-
-        /// <summary>
-        /// Load all collections whose item type matches the given type.
-        /// </summary>
-        public static List<ScriptableObjectCollection> FindByItemType(Type targetItemType)
-        {
-            var result = new List<ScriptableObjectCollection>();
-            foreach (var collection in FindAll())
-            {
-                Type itemType = collection.GetItemType();
-                if (itemType != null && itemType.IsAssignableFrom(targetItemType))
-                    result.Add(collection);
-            }
-            return result;
         }
 
         [NonSerialized] private List<ScriptableObject> loadedItems;
@@ -117,13 +78,31 @@ namespace BrunoMikoski.ScriptableObjectCollections
             isLoaded = false;
         }
 
-#if UNITY_EDITOR
-        public void GenerateNewGUID()
+        /// <summary>
+        /// Load all collections via Addressables using the shared label.
+        /// Works in both editor and runtime.
+        /// </summary>
+        public static List<ScriptableObjectCollection> FindAll()
         {
-            guid = LongGuid.NewGuid();
-            ObjectUtility.SetDirty(this);
+            var handle = Addressables.LoadAssetsAsync<ScriptableObjectCollection>(AllCollectionsLabel, null);
+            var results = handle.WaitForCompletion();
+            return new List<ScriptableObjectCollection>(results);
         }
-#endif
+
+        /// <summary>
+        /// Load all collections whose item type matches the given type.
+        /// </summary>
+        public static List<ScriptableObjectCollection> FindByItemType(Type targetItemType)
+        {
+            var result = new List<ScriptableObjectCollection>();
+            foreach (var collection in FindAll())
+            {
+                Type itemType = collection.GetItemType();
+                if (itemType != null && itemType.IsAssignableFrom(targetItemType))
+                    result.Add(collection);
+            }
+            return result;
+        }
 
         public virtual Type GetItemType()
         {

@@ -24,7 +24,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             AssetDatabaseUtils.CreatePathIfDoesntExist(ItemsFolder);
 
             collection = ScriptableObject.CreateInstance<TestCollection>();
-            collection.GenerateNewGUID();
+
             AssetDatabase.CreateAsset(collection, $"{TestFolder}/TestCollection.asset");
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -80,17 +80,6 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             Assert.IsNull(AssetDatabase.LoadAssetAtPath<ScriptableObject>(assetPath));
         }
 
-        [Test]
-        public void GetOrAddNewItem_CreatesNewIfNotFound()
-        {
-            // Collection isn't fully Addressable in tests, so LoadSync logs an error
-            LogAssert.ignoreFailingMessages = true;
-            ISOCItem created = SOCEditorUtility.GetOrAddNewItem(collection, typeof(TestItem), "BrandNew");
-            LogAssert.ignoreFailingMessages = false;
-
-            Assert.IsNotNull(created);
-            Assert.AreEqual("BrandNew", created.name);
-        }
 
         [Test]
         public void FindCollectionForItemPath_FindsParentCollection()
@@ -103,7 +92,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             ScriptableObjectCollection found = SOCAddressableUtility.FindCollectionForItemPath($"{ItemsFolder}/FindMe.asset");
 
             Assert.IsNotNull(found);
-            Assert.AreEqual(collection.GUID, found.GUID);
+            Assert.AreEqual(collection, found);
         }
     }
 }

@@ -23,7 +23,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             AssetDatabaseUtils.CreatePathIfDoesntExist(ItemsFolder);
 
             collection = ScriptableObject.CreateInstance<TestCollection>();
-            collection.GenerateNewGUID();
+
             AssetDatabase.CreateAsset(collection, $"{TestFolder}/PostprocCollection.asset");
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -52,7 +52,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
 
             var found = SOCAddressablePostprocessor.FindCollectionForItemPath($"{ItemsFolder}/CachedItem.asset");
             Assert.IsNotNull(found);
-            Assert.AreEqual(collection.GUID, found.GUID);
+            Assert.AreEqual(collection, found);
         }
 
         [Test]
@@ -102,7 +102,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             AssetDatabaseUtils.CreatePathIfDoesntExist("Assets/SOCNewCollTemp");
             AssetDatabaseUtils.CreatePathIfDoesntExist("Assets/SOCNewCollTemp/Items");
             var newCollection = ScriptableObject.CreateInstance<TestCollection>();
-            newCollection.GenerateNewGUID();
+
             AssetDatabase.CreateAsset(newCollection, "Assets/SOCNewCollTemp/NewCollection.asset");
             var newItem = ScriptableObject.CreateInstance<TestItem>();
             AssetDatabase.CreateAsset(newItem, "Assets/SOCNewCollTemp/Items/NewItem.asset");
@@ -112,7 +112,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             // After invalidation and new asset creation, should find the new collection
             var found = SOCAddressablePostprocessor.FindCollectionForItemPath("Assets/SOCNewCollTemp/Items/NewItem.asset");
             Assert.IsNotNull(found);
-            Assert.AreEqual(newCollection.GUID, found.GUID);
+            Assert.AreEqual(newCollection, found);
 
             AssetDatabase.DeleteAsset("Assets/SOCNewCollTemp");
         }
@@ -146,7 +146,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
 
             var found = SOCAddressablePostprocessor.FindCollectionForItemPath($"{ItemsFolder}/SubFolder/Deep.asset");
             Assert.IsNotNull(found);
-            Assert.AreEqual(collection.GUID, found.GUID);
+            Assert.AreEqual(collection, found);
         }
     }
 }
