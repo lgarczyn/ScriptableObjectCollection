@@ -57,6 +57,14 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             loadedItems = null;
             isLoaded = false;
+            ClearCache();
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void OnSubsystemRegistration()
+        {
+            // Clear caches on domain reload and play mode enter
+            ClearCache();
         }
 
         /// <summary>
@@ -94,12 +102,18 @@ namespace BrunoMikoski.ScriptableObjectCollections
             return result;
         }
 
+        private static readonly Dictionary<Type, object> valuesCache = new();
+        private static readonly Dictionary<Type, object> ofTypeCache = new();
+
         /// <summary>
         /// Get all items of a given type across ALL collections.
-        /// Loads all collections, filters their items by type.
+        /// Results are cached; call ClearCache() or Unload collections to invalidate.
         /// </summary>
-        public static List<T> Values<T>() where T : ScriptableObject, ISOCItem
+        public static IReadOnlyList<T> Values<T>() where T : ScriptableObject, ISOCItem
         {
+            if (valuesCache.TryGetValue(typeof(T), out object cached))
+                return (List<T>)cached;
+
             var result = new List<T>();
             foreach (var collection in FindByItemType(typeof(T)))
             {
@@ -108,15 +122,19 @@ namespace BrunoMikoski.ScriptableObjectCollections
                     if (items[i] is T typed)
                         result.Add(typed);
             }
+            valuesCache[typeof(T)] = result;
             return result;
         }
 
         /// <summary>
         /// Get all items of a given type across ALL collections.
-        /// Works for any ScriptableObject type, not just ISOCItem.
+        /// Results are cached; call ClearCache() or Unload collections to invalidate.
         /// </summary>
-        public static List<T> OfType<T>() where T : ScriptableObject
+        public static IReadOnlyList<T> OfType<T>() where T : ScriptableObject
         {
+            if (ofTypeCache.TryGetValue(typeof(T), out object cached))
+                return (List<T>)cached;
+
             var result = new List<T>();
             foreach (var collection in FindAll())
             {
@@ -125,7 +143,17 @@ namespace BrunoMikoski.ScriptableObjectCollections
                     if (items[i] is T typed)
                         result.Add(typed);
             }
+            ofTypeCache[typeof(T)] = result;
             return result;
+        }
+
+        /// <summary>
+        /// Clear the static Values/OfType caches.
+        /// </summary>
+        public static void ClearCache()
+        {
+            valuesCache.Clear();
+            ofTypeCache.Clear();
         }
 
         public virtual Type GetItemType()

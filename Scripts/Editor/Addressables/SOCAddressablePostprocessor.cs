@@ -8,6 +8,23 @@ using UnityEngine;
 namespace BrunoMikoski.ScriptableObjectCollections
 {
     /// <summary>
+    /// Clears collection caches on play mode transitions.
+    /// </summary>
+    [InitializeOnLoad]
+    static class SOCPlayModeHandler
+    {
+        static SOCPlayModeHandler()
+        {
+            EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+        }
+
+        private static void OnPlayModeStateChanged(PlayModeStateChange state)
+        {
+            ScriptableObjectCollection.ClearCache();
+        }
+    }
+
+    /// <summary>
     /// Watches for imported/moved/deleted SOC assets and ensures they are
     /// properly configured as Addressables with the correct labels.
     /// Caches known collections to avoid full project rescans.
