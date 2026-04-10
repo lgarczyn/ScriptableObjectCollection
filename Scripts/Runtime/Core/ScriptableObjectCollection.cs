@@ -1,7 +1,5 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
@@ -18,13 +16,11 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         /// <summary>
         /// The Unity asset GUID, baked by the postprocessor.
-        /// Used as the Addressable address for this collection.
         /// </summary>
         public string Guid => m_Guid;
 
         /// <summary>
         /// Addressable label applied to all items belonging to this collection.
-        /// Same as the collection's asset GUID.
         /// </summary>
         public string AddressableLabel => m_Guid;
 
@@ -33,19 +29,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
         [NonSerialized] private bool isLoaded;
 
         public bool IsLoaded => isLoaded;
-
-        public IReadOnlyList<ScriptableObject> Items
-        {
-            get
-            {
-                if (!isLoaded)
-                    LoadSync();
-                return loadedItems;
-            }
-        }
-
-        public int Count => Items.Count;
-        public ScriptableObject this[int index] => Items[index];
 
         public void LoadSync()
         {
@@ -77,6 +60,16 @@ namespace BrunoMikoski.ScriptableObjectCollections
         }
 
         /// <summary>
+        /// Untyped access to loaded items. Prefer Values on the generic subclass.
+        /// </summary>
+        public IReadOnlyList<ScriptableObject> GetLoadedItems()
+        {
+            if (!isLoaded)
+                LoadSync();
+            return loadedItems;
+        }
+
+        /// <summary>
         /// Load all collections via Addressables using the shared label.
         /// </summary>
         public static List<ScriptableObjectCollection> FindAll()
@@ -101,6 +94,40 @@ namespace BrunoMikoski.ScriptableObjectCollections
             return result;
         }
 
+        /// <summary>
+        /// Get all items of a given type across ALL collections.
+        /// Loads all collections, filters their items by type.
+        /// </summary>
+        public static List<T> Values<T>() where T : ScriptableObject, ISOCItem
+        {
+            var result = new List<T>();
+            foreach (var collection in FindByItemType(typeof(T)))
+            {
+                var items = collection.GetLoadedItems();
+                for (int i = 0; i < items.Count; i++)
+                    if (items[i] is T typed)
+                        result.Add(typed);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Get all items of a given type across ALL collections.
+        /// Works for any ScriptableObject type, not just ISOCItem.
+        /// </summary>
+        public static List<T> OfType<T>() where T : ScriptableObject
+        {
+            var result = new List<T>();
+            foreach (var collection in FindAll())
+            {
+                var items = collection.GetLoadedItems();
+                for (int i = 0; i < items.Count; i++)
+                    if (items[i] is T typed)
+                        result.Add(typed);
+            }
+            return result;
+        }
+
         public virtual Type GetItemType()
         {
             Type baseType = GetType().BaseType;
@@ -112,36 +139,14 @@ namespace BrunoMikoski.ScriptableObjectCollections
             }
             return null;
         }
-
-        public IReadOnlyList<ScriptableObject> GetLoadedItems()
-        {
-            if (!isLoaded)
-                LoadSync();
-            return loadedItems;
-        }
-
-        /// <summary>
-        /// Get all items of a specific type from this collection.
-        /// </summary>
-        public IEnumerable<T> OfType<T>() where T : ScriptableObject
-        {
-            return GetLoadedItems().OfType<T>();
-        }
     }
 
-    public class ScriptableObjectCollection<TObjectType> : ScriptableObjectCollection, IReadOnlyList<TObjectType>
+    public class ScriptableObjectCollection<TObjectType> : ScriptableObjectCollection
         where TObjectType : ScriptableObject, ISOCItem
     {
-        [NonSerialized] private ReadOnlyCollection<TObjectType> cachedValues;
-
         public override void Unload()
         {
-            cachedValues = null;
             base.Unload();
         }
-
-        public IEnumerator<TObjectType> GetEnumerator() => OfType<TObjectType>().GetEnumerator();
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-        public new TObjectType this[int index] => (TObjectType)Items[index];
     }
 }
