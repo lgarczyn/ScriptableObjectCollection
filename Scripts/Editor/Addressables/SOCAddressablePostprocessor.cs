@@ -96,6 +96,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             RebuildCache(changedPaths);
 
+            // Bake asset GUIDs into m_Guid fields
+            BakeGuids(changedPaths);
+
             // Process each collection that has changed assets in its folder
             foreach (CollectionInfo info in CachedCollections)
             {
@@ -136,9 +139,51 @@ namespace BrunoMikoski.ScriptableObjectCollections
             }
         }
 
-        /// <summary>
-        /// Bake the Unity asset GUID into the m_Guid field of SOC-managed assets.
-        /// </summary>
+        private static bool isBaking;
+
+        private static void BakeGuids(HashSet<string> changedPaths)
+        {
+            if (isBaking)
+                return;
+
+            isBaking = true;
+            try
+            {
+                foreach (string path in changedPaths)
+                {
+                    Type assetType = AssetDatabase.GetMainAssetTypeAtPath(path);
+                    if (assetType == null)
+                        continue;
+
+                    bool isManaged = typeof(ScriptableObjectCollection).IsAssignableFrom(assetType)
+                                  || typeof(ISOCItem).IsAssignableFrom(assetType)
+                                  || typeof(IRegisteredSO).IsAssignableFrom(assetType);
+                    if (!isManaged)
+                        continue;
+
+                    string assetGuid = AssetDatabase.AssetPathToGUID(path);
+                    if (string.IsNullOrEmpty(assetGuid))
+                        continue;
+
+                    var asset = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
+                    if (asset == null)
+                        continue;
+
+                    var so = new SerializedObject(asset);
+                    var guidProp = so.FindProperty("m_Guid");
+                    if (guidProp == null || guidProp.stringValue == assetGuid)
+                        continue;
+
+                    guidProp.stringValue = assetGuid;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                }
+            }
+            finally
+            {
+                isBaking = false;
+            }
+        }
+
         /// <summary>
         /// Find the parent collection for an item path using the cached collection list.
         /// Falls back to a folder walk if cache isn't ready.

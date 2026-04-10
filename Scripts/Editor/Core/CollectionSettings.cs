@@ -21,7 +21,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         public CollectionSettings(ScriptableObjectCollection targetCollection)
         {
-            string targetNamespace = targetCollection.GetItemType().Namespace;
+            string targetNamespace = targetCollection.GetItemType()?.Namespace;
             if (string.IsNullOrEmpty(targetNamespace) && !string.IsNullOrEmpty(SOCSettings.Instance.NamespacePrefix))
                 targetNamespace = $"{SOCSettings.Instance.NamespacePrefix}";
 
