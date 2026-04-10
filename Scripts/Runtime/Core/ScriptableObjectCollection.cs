@@ -179,6 +179,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
         {
             base.Unload();
         }
+        public IEnumerable<TObjectType> Items => GetLoadedItems().OfType<TObjectType>();
         // TODO: clean this mess
         public IEnumerator<TObjectType> GetEnumerator() => GetLoadedItems().OfType<TObjectType>().GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
