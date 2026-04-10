@@ -31,7 +31,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
         private const string LAST_COLLECTION_NAMESPACE_KEY = "CollectionNamespaceKey";
         private const string LAST_GENERATED_COLLECTION_SCRIPT_PATH_KEY = "CollectionScriptPathKey";
         private const string LAST_TARGET_SCRIPTS_FOLDER_KEY = "LastTargetScriptsFolder";
-        private const string GENERATE_INDIRECT_ACCESS_KEY = "GenerateIndirectAccess";
         private const string CREATE_FOLDER_FOR_THIS_COLLECTION_KEY = "CreateFolderForThisCollection";
         private const string CREATE_FOLDER_FOR_THIS_COLLECTION_SCRIPTS_KEY = "CreateFolderForThisCollectionScripts";
         private const string AUTO_COLLECTION_NAME_KEY = "AutoCollectionName";
@@ -295,9 +294,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         private string collectionItemName = ITEM_NAME_DEFAULT;
 
-        private static readonly EditorPreferenceBool GenerateIndirectAccess =
-            new EditorPreferenceBool(GENERATE_INDIRECT_ACCESS_KEY, true);
-        
         private static readonly EditorPreferenceBool AutoCollectionName =
             new EditorPreferenceBool(AUTO_COLLECTION_NAME_KEY, true);
         
@@ -462,9 +458,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
                     GUI.enabled = wasGuiEnabled;
                     EditorGUILayout.EndHorizontal();
 
-                    EditorGUILayout.Space();
-
-                    GenerateIndirectAccess.DrawGUILayout();
                 }
 
                 EditorGUILayout.EndFoldoutHeaderGroup();
@@ -599,20 +592,12 @@ namespace BrunoMikoski.ScriptableObjectCollections
             scriptsGenerated |= CreateCollectionItemScript();
             scriptsGenerated |= CreateCollectionScript();
 
-            if (GenerateIndirectAccess.Value)
-                CreateIndirectAccess();
-                
             WaitingRecompileForContinue.Value = true;
             
             AssetDatabase.Refresh();
 
             if (!scriptsGenerated)
                 AfterScriptsAreReady();
-        }
-
-        private void CreateIndirectAccess()
-        {
-            CodeGenerationUtility.GenerateIndirectAccessForCollectionItemType(collectionItemName, Namespace, ScriptsFolderPath);
         }
 
         private bool CreateCollectionItemScript()

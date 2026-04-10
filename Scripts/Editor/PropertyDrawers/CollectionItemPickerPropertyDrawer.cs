@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using BrunoMikoski.ScriptableObjectCollections.Popup;
@@ -11,13 +11,8 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
     [CustomPropertyDrawer(typeof(CollectionItemPicker<>), true)]
     public class CollectionItemPickerPropertyDrawer : PropertyDrawer
     {
-        private const string COLLECTION_ITEM_GUID_VALUE_A = "collectionItemGUIDValueA";
-        private const string COLLECTION_ITEM_GUID_VALUE_B = "collectionItemGUIDValueB";
-
-        private const string COLLECTION_GUID_VALUE_A = "collectionGUIDValueA";
-        private const string COLLECTION_GUID_VALUE_B = "collectionGUIDValueB";
-        
-        private const string ITEMS_PROPERTY_NAME = "indirectReferences";
+        private const string ITEMS_PROPERTY_NAME = "itemReferences";
+        private const string ASSET_GUID_PROPERTY = "m_AssetGUID";
 
         private static GUIStyle labelStyle;
         private static GUIStyle buttonStyle;
@@ -33,7 +28,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
         {
             private readonly string name;
             public string Name => name;
-            
+
             public PopupItem(ScriptableObject scriptableObject)
             {
                 name = scriptableObject.name;
@@ -150,14 +145,17 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
 
         private void CreatAndAddNewItems(SerializedProperty property)
         {
-            ScriptableObjectCollection scriptableObjectCollection = possibleCollections.First();
-            ScriptableObjectCollection collection = scriptableObjectCollection;
+            ScriptableObjectCollection collection = possibleCollections.First();
 
-            ScriptableObject newItem = CollectionCustomEditor.AddNewItem(collection, scriptableObjectCollection.GetItemType());
+            ScriptableObject newItem = CollectionCustomEditor.AddNewItem(collection, collection.GetItemType());
             SerializedProperty itemsProperty = property.FindPropertyRelative(ITEMS_PROPERTY_NAME);
             itemsProperty.arraySize++;
 
-            AssignItemGUIDToProperty(newItem, itemsProperty.GetArrayElementAtIndex(itemsProperty.arraySize - 1));
+            string assetGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(newItem));
+            SerializedProperty newElement = itemsProperty.GetArrayElementAtIndex(itemsProperty.arraySize - 1);
+            newElement.FindPropertyRelative(ASSET_GUID_PROPERTY).stringValue = assetGuid;
+
+            itemsProperty.serializedObject.ApplyModifiedProperties();
         }
 
         private void GetValuesFromPopup(PopupList<PopupItem> popupList, SerializedProperty property)
@@ -169,9 +167,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
             for (int i = 0; i < popupList.Count; i++)
             {
                 if (popupList.GetSelected(i))
-                {
                     selectedCount++;
-                }
             }
 
             itemsProperty.arraySize = selectedCount;
@@ -183,27 +179,13 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
                 if (popupList.GetSelected(i))
                 {
                     SerializedProperty newProperty = itemsProperty.GetArrayElementAtIndex(propertyArrayIndex);
-                    AssignItemGUIDToProperty(availableItems[i], newProperty);
+                    string assetGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(availableItems[i]));
+                    newProperty.FindPropertyRelative(ASSET_GUID_PROPERTY).stringValue = assetGuid;
                     propertyArrayIndex++;
                 }
             }
 
             itemsProperty.serializedObject.ApplyModifiedProperties();
-        }
-
-        private void AssignItemGUIDToProperty(ScriptableObject scriptableObject, SerializedProperty newProperty)
-        {
-            if (scriptableObject is not ISOCItem item)
-                return;
-
-            (long, long) itemValues = item.GUID.GetRawValues();
-            (long, long) collectionValues = item.Collection.GUID.GetRawValues();
-
-            newProperty.FindPropertyRelative(COLLECTION_ITEM_GUID_VALUE_A).longValue = itemValues.Item1;
-            newProperty.FindPropertyRelative(COLLECTION_ITEM_GUID_VALUE_B).longValue = itemValues.Item2;
-
-            newProperty.FindPropertyRelative(COLLECTION_GUID_VALUE_A).longValue = collectionValues.Item1;
-            newProperty.FindPropertyRelative(COLLECTION_GUID_VALUE_B).longValue = collectionValues.Item2;
         }
 
         private void SetSelectedValuesOnPopup(PopupList<PopupItem> popupList, SerializedProperty property)
@@ -216,32 +198,24 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
             for (int i = arraySize - 1; i >= 0; i--)
             {
                 SerializedProperty elementProperty = itemsProperty.GetArrayElementAtIndex(i);
+                string assetGuid = elementProperty.FindPropertyRelative(ASSET_GUID_PROPERTY).stringValue;
 
-                LongGuid socItemGUID = GetGUIDFromProperty(elementProperty);
-
-                ScriptableObject foundItem = availableItems.FirstOrDefault(so =>
+                if (string.IsNullOrEmpty(assetGuid))
                 {
-                    if (so is ISOCItem item)
-                    {
-                        if(item.GUID == socItemGUID)
-                        {
-                            return true;
-                        }
-                    }
+                    itemsProperty.DeleteArrayElementAtIndex(i);
+                    continue;
+                }
 
-                    return false;
-                });
-                if (foundItem != null)
+                string assetPath = AssetDatabase.GUIDToAssetPath(assetGuid);
+                ScriptableObject asset = AssetDatabase.LoadAssetAtPath<ScriptableObject>(assetPath);
+
+                if (asset != null)
                 {
-                    int indexOf = availableItems.IndexOf(foundItem);
+                    int indexOf = availableItems.IndexOf(asset);
                     if (indexOf >= 0)
-                    {
                         popupList.SetSelected(indexOf, true);
-                    }
                     else
-                    {
                         itemsProperty.DeleteArrayElementAtIndex(i);
-                    }
                 }
                 else
                 {
@@ -252,20 +226,10 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
             itemsProperty.serializedObject.ApplyModifiedProperties();
         }
 
-        private LongGuid GetGUIDFromProperty(SerializedProperty property)
-        {
-            SerializedProperty itemGUIDValueASerializedProperty = property.FindPropertyRelative(COLLECTION_ITEM_GUID_VALUE_A);
-            SerializedProperty itemGUIDValueBSerializedProperty = property.FindPropertyRelative(COLLECTION_ITEM_GUID_VALUE_B);
-
-            return new LongGuid(itemGUIDValueASerializedProperty.longValue, itemGUIDValueBSerializedProperty.longValue);
-        }
-
         private void Initialize(SerializedProperty property)
         {
             if (initializedPropertiesPaths.Contains(property.propertyPath))
                 return;
-
-            ValidateIndirectReferencesInProperty(property);
 
             Type arrayOrListType = fieldInfo.FieldType.GetArrayOrListType();
             Type itemType = arrayOrListType ?? fieldInfo.FieldType;
@@ -300,46 +264,5 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
             labelStyle = assetLabelStyle;
             initializedPropertiesPaths.Add(property.propertyPath);
         }
-
-        private void ValidateIndirectReferencesInProperty(SerializedProperty property)
-        {
-            SerializedProperty indirectReferencesProperty = property.FindPropertyRelative(ITEMS_PROPERTY_NAME);
-
-            bool changed = false;
-            for (int i = indirectReferencesProperty.arraySize - 1; i >= 0; i--)
-            {
-                SerializedProperty elementProperty = indirectReferencesProperty.GetArrayElementAtIndex(i);
-
-                long collectionGUIDValueA = elementProperty.FindPropertyRelative(COLLECTION_GUID_VALUE_A).longValue;
-                long collectionGUIDValueB = elementProperty.FindPropertyRelative(COLLECTION_GUID_VALUE_B).longValue;
-                LongGuid collectionGUID = new(collectionGUIDValueA, collectionGUIDValueB);
-
-                long itemGUIDValueA = elementProperty.FindPropertyRelative(COLLECTION_ITEM_GUID_VALUE_A).longValue;
-                long itemGUIDValueB = elementProperty.FindPropertyRelative(COLLECTION_ITEM_GUID_VALUE_B).longValue;
-                LongGuid itemGUID = new(itemGUIDValueA, itemGUIDValueB);
-
-                bool validReference = false;
-                if(ScriptableObjectCollection.TryFindByGUIDInEditor(collectionGUID, out ScriptableObjectCollection collection))
-                {
-                    if (collection.TryGetItemByGUID(itemGUID, out _))
-                    {
-                        validReference = true;
-                    }
-                }
-
-                if (!validReference)
-                {
-                    indirectReferencesProperty.DeleteArrayElementAtIndex(i);
-                    changed = true;
-                }
-            }
-
-            if (changed)
-            {
-                indirectReferencesProperty.serializedObject.ApplyModifiedProperties();
-            }
-        }
-
-
     }
 }

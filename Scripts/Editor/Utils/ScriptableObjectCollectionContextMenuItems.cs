@@ -36,16 +36,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             Type collectionType = command.context.GetType();
             return CollectionGenerators.GetGeneratorTypeForCollection(collectionType) != null;
         }
-        
-        
-        [MenuItem("CONTEXT/ScriptableObjectCollection/Create Indirect Reference file", false, 99999)]
-        private static void CreateIndirectReference(MenuCommand command)
-        {
-            ScriptableObjectCollection collection = (ScriptableObjectCollection)command.context;
-            
-            CodeGenerationUtility.GenerateIndirectAccessForCollectionItemType(collection.GetItemType());
-        }
-        
+
         [MenuItem("CONTEXT/ScriptableObjectCollection/Reset Settings", false, 1000)]
         private static void ResetSettings(MenuCommand command)
         {

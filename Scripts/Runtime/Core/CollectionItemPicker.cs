@@ -2,20 +2,21 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Serialization;
+using UnityEngine.AddressableAssets;
 
 namespace BrunoMikoski.ScriptableObjectCollections.Picker
 {
     /// <summary>
     /// Collection Item Picker lets you pick one or more items from a collection, similar to how an enum field would
     /// work if the enum had the [Flags] attribute applied to it.
+    /// Uses AssetReference for lazy Addressable-based loading.
     /// </summary>
     [Serializable]
     public class CollectionItemPicker<TItemType> : IList<TItemType>, IEquatable<IList<TItemType>>, IEquatable<CollectionItemPicker<TItemType>>
         where TItemType : ScriptableObject, ISOCItem
     {
-        [SerializeField, FormerlySerializedAs("cachedIndirectReferences")]
-        private List<CollectionItemIndirectReference<TItemType>> indirectReferences = new();
+        [SerializeField]
+        private List<AssetReference> itemReferences = new();
 
         public event Action<TItemType> OnItemTypeAddedEvent;
         public event Action<TItemType> OnItemTypeRemovedEvent;
@@ -31,18 +32,21 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
                 {
                     cachedItems.Clear();
 
-                    for (int i = 0; i < indirectReferences.Count; i++)
+                    for (int i = itemReferences.Count - 1; i >= 0; i--)
                     {
-                        CollectionItemIndirectReference<TItemType> collectionItemIndirectReference = indirectReferences[i];
-                        if (!collectionItemIndirectReference.IsValid() || collectionItemIndirectReference.Ref == null)
+                        AssetReference assetRef = itemReferences[i];
+                        TItemType item = ResolveReference(assetRef);
+                        if (item == null)
                         {
-                            indirectReferences.RemoveAt(i);
+                            itemReferences.RemoveAt(i);
                             continue;
                         }
 
-                        cachedItems.Add(collectionItemIndirectReference.Ref);
+                        cachedItems.Add(item);
                     }
 
+                    // Reverse because we iterated backwards
+                    cachedItems.Reverse();
                     isDirty = false;
                 }
 
@@ -50,18 +54,32 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
             }
         }
 
+        private static TItemType ResolveReference(AssetReference assetRef)
+        {
+            if (assetRef == null || !assetRef.RuntimeKeyIsValid())
+                return null;
+
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+                return assetRef.editorAsset as TItemType;
+#endif
+            if (assetRef.Asset != null)
+                return assetRef.Asset as TItemType;
+
+            return assetRef.LoadAssetAsync<TItemType>().WaitForCompletion();
+        }
+
         public CollectionItemPicker()
         {
-            
         }
-        
+
         public CollectionItemPicker(params TItemType[] items)
         {
             for (int i = 0; i < items.Length; i++)
                 Add(items[i]);
         }
 
-        #region Boleans and Checks
+        #region Booleans and Checks
         public bool HasAny(params TItemType[] itemTypes)
         {
             for (int i = 0; i < itemTypes.Length; i++)
@@ -72,7 +90,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
 
             return false;
         }
-        
+
         public bool HasAll(params TItemType[] itemTypes)
         {
             for (int i = 0; i < itemTypes.Length; i++)
@@ -83,7 +101,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
 
             return true;
         }
-        
+
         public bool HasAll(IList<TItemType> itemTypes)
         {
             for (int i = 0; i < itemTypes.Count; i++)
@@ -94,7 +112,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
 
             return true;
         }
-        
+
         public bool HasNone(params TItemType[] itemTypes)
         {
             for (int i = 0; i < itemTypes.Length; i++)
@@ -106,8 +124,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
             return true;
         }
         #endregion
-        
-        //Implement mathematical operators  
+
         #region Operators
 
         public static implicit operator List<TItemType>(CollectionItemPicker<TItemType> targetPicker)
@@ -121,17 +138,13 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
             CollectionItemPicker<TItemType> result = new CollectionItemPicker<TItemType>();
 
             for (int i = 0; i < picker1.Count; i++)
-            {
                 result.Add(picker1[i]);
-            }
 
             for (int i = 0; i < picker2.Count; i++)
             {
                 TItemType item = picker2[i];
-                if (result.Contains(item))
-                    continue;
-
-                result.Add(item);
+                if (!result.Contains(item))
+                    result.Add(item);
             }
 
             return result;
@@ -143,17 +156,13 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
             CollectionItemPicker<TItemType> result = new CollectionItemPicker<TItemType>();
 
             for (int i = 0; i < picker1.Count; i++)
-            {
                 result.Add(picker1[i]);
-            }
 
             for (int i = 0; i < picker2.Count; i++)
             {
                 TItemType item = picker2[i];
-                if (!result.Contains(item))
-                    continue;
-
-                result.Remove(item);
+                if (result.Contains(item))
+                    result.Remove(item);
             }
 
             return result;
@@ -163,9 +172,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
             TItemType targetItem)
         {
             if (!picker.Contains(targetItem))
-            {
                 picker.Add(targetItem);
-            }
 
             return picker;
         }
@@ -179,7 +186,6 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
 
         #endregion
 
-        // Implement IList and forward its members to items. This way we can conveniently use this thing as a list.
         #region IList members implementation
 
         public IEnumerator<TItemType> GetEnumerator()
@@ -196,8 +202,12 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
         {
             if (Contains(item))
                 return;
-            
-            indirectReferences.Add(new CollectionItemIndirectReference<TItemType>(item));
+
+            string guid = GetAssetGUID(item);
+            if (string.IsNullOrEmpty(guid))
+                return;
+
+            itemReferences.Add(new AssetReference(guid));
             isDirty = true;
             OnItemTypeAddedEvent?.Invoke(item);
             OnChangedEvent?.Invoke();
@@ -205,17 +215,17 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
 
         public void Clear()
         {
-            indirectReferences.Clear();
+            itemReferences.Clear();
             isDirty = true;
             OnChangedEvent?.Invoke();
         }
 
         public bool Contains(TItemType item)
         {
-            for (int i = 0; i < indirectReferences.Count; i++)
+            for (int i = 0; i < itemReferences.Count; i++)
             {
-                CollectionItemIndirectReference<TItemType> indirectReference = indirectReferences[i];
-                if (indirectReference.Ref == item)
+                TItemType resolved = ResolveReference(itemReferences[i]);
+                if (resolved == item)
                     return true;
             }
 
@@ -224,89 +234,95 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
 
         public void CopyTo(TItemType[] array, int arrayIndex)
         {
-            for (int i = 0; i < indirectReferences.Count; i++)
-            {
-                CollectionItemIndirectReference<TItemType> indirectReference = indirectReferences[i];
-                
-                array[arrayIndex + i] = indirectReference.Ref;
-
-            }
-        }
-
-        private bool TryFindIndirectReferenceByItemType(TItemType targetItemType, out CollectionItemIndirectReference<TItemType> result)
-        {
-            for (int i = 0; i < indirectReferences.Count; i++)
-            {
-                CollectionItemIndirectReference<TItemType> indirectReference = indirectReferences[i];
-                if (indirectReference.Ref == targetItemType)
-                {
-                    result = indirectReference;
-                    return true;
-                }
-            }
-
-            result = null;
-            return false;
+            var items = Items;
+            for (int i = 0; i < items.Count; i++)
+                array[arrayIndex + i] = items[i];
         }
 
         public bool Remove(TItemType item)
         {
-            if (!TryFindIndirectReferenceByItemType(item, out CollectionItemIndirectReference<TItemType> indirectReference))
-                return false;
-            
-            CollectionItemIndirectReference<TItemType> removedItem = indirectReference;
-            bool removed = indirectReferences.Remove(indirectReference);
-            if (removed)
+            for (int i = 0; i < itemReferences.Count; i++)
             {
-                isDirty = true;
-                OnChangedEvent?.Invoke();
-                OnItemTypeRemovedEvent?.Invoke(removedItem.Ref);
+                TItemType resolved = ResolveReference(itemReferences[i]);
+                if (resolved == item)
+                {
+                    itemReferences.RemoveAt(i);
+                    isDirty = true;
+                    OnChangedEvent?.Invoke();
+                    OnItemTypeRemovedEvent?.Invoke(item);
+                    return true;
+                }
             }
 
-            return removed;
+            return false;
         }
 
-        public int Count => indirectReferences.Count;
+        public int Count => itemReferences.Count;
 
         public bool IsReadOnly => false;
 
         public int IndexOf(TItemType item)
         {
-            return indirectReferences.FindIndex(reference => reference.Ref.GUID == item.GUID);
+            for (int i = 0; i < itemReferences.Count; i++)
+            {
+                TItemType resolved = ResolveReference(itemReferences[i]);
+                if (resolved != null && resolved is ISOCItem socItem && item is ISOCItem targetSoc && socItem.GUID == targetSoc.GUID)
+                    return i;
+            }
+            return -1;
         }
 
         public void Insert(int index, TItemType item)
         {
             if (Contains(item))
                 return;
-            
-            indirectReferences.Insert(index, new CollectionItemIndirectReference<TItemType>(item));
+
+            string guid = GetAssetGUID(item);
+            if (string.IsNullOrEmpty(guid))
+                return;
+
+            itemReferences.Insert(index, new AssetReference(guid));
             isDirty = true;
         }
 
         public void RemoveAt(int index)
         {
-            if (index < 0 || index >= indirectReferences.Count)
+            if (index < 0 || index >= itemReferences.Count)
                 return;
 
-            CollectionItemIndirectReference<TItemType> removedItem = indirectReferences[index];
-            indirectReferences.RemoveAt(index);
+            TItemType resolved = ResolveReference(itemReferences[index]);
+            itemReferences.RemoveAt(index);
             isDirty = true;
             OnChangedEvent?.Invoke();
-            OnItemTypeRemovedEvent?.Invoke(removedItem.Ref);
+            if (resolved != null)
+                OnItemTypeRemovedEvent?.Invoke(resolved);
         }
 
         public TItemType this[int index]
         {
-            get => indirectReferences[index].Ref;
+            get => ResolveReference(itemReferences[index]);
             set
             {
-                indirectReferences[index] = new CollectionItemIndirectReference<TItemType>(value);
-                isDirty = true;
+                string guid = GetAssetGUID(value);
+                if (!string.IsNullOrEmpty(guid))
+                {
+                    itemReferences[index] = new AssetReference(guid);
+                    isDirty = true;
+                }
             }
         }
 
         #endregion
+
+        private static string GetAssetGUID(TItemType item)
+        {
+#if UNITY_EDITOR
+            string path = UnityEditor.AssetDatabase.GetAssetPath(item);
+            return UnityEditor.AssetDatabase.AssetPathToGUID(path);
+#else
+            return null;
+#endif
+        }
 
         public bool Equals(IList<TItemType> other)
         {

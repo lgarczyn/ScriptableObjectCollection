@@ -287,48 +287,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
             return canBePartial;
         }
 
-        public static void GenerateIndirectAccessForCollectionItemType(Type collectionItemType)
-        {
-            string baseClassPath = AssetDatabase.GetAssetPath(MonoScript.FromScriptableObject(ScriptableObject.CreateInstance(collectionItemType)));
-            string parentFolder = Path.GetDirectoryName(baseClassPath);
-            GenerateIndirectAccessForCollectionItemType(collectionItemType.Name, collectionItemType.Namespace, parentFolder);
-        }
-
-        public static void GenerateIndirectAccessForCollectionItemType(string collectionName, string collectionNamespace,
-            string targetFolder)
-        {
-            string fileName = $"{collectionName}IndirectReference";
-
-            AssetDatabaseUtils.CreatePathIfDoesntExist(targetFolder);
-
-            string targetFileName = Path.Combine(targetFolder, fileName);
-            targetFileName += ExtensionNew;
-            using (StreamWriter writer = new StreamWriter(targetFileName))
-            {
-                int indentation = 0;
-                List<string> directives = new List<string>();
-                directives.Add(typeof(ScriptableObjectCollection).Namespace);
-                directives.Add(collectionNamespace);
-                directives.Add("System");
-                directives.Add("UnityEngine");
-
-                AppendHeader(writer, ref indentation, collectionNamespace, "[Serializable]",
-                    $"public sealed class {collectionName}IndirectReference : CollectionItemIndirectReference<{collectionName}>",
-                    directives.Distinct().ToArray());
-
-                AppendLine(writer, indentation,
-                    $"public {collectionName}IndirectReference() {{}}");
-
-                AppendLine(writer, indentation,
-                    $"public {collectionName}IndirectReference({collectionName} collectionItemScriptableObject) : base(collectionItemScriptableObject) {{}}");
-
-                indentation--;
-                AppendFooter(writer, ref indentation, collectionNamespace);
-            }
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-        }
-
         public static void GenerateStaticCollectionScript(ScriptableObjectCollection collection)
         {
             if (!CanGenerateStaticFile(collection, out string errorMessage))
