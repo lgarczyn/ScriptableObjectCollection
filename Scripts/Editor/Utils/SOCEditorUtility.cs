@@ -43,7 +43,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (AddressableAssetSettingsDefaultObject.Settings != null)
             {
                 SOCAddressableUtility.EnsureItemAddressable(uniqueAssetPath, collection.AddressableLabel);
-                SOCAddressableUtility.SyncAllAddressables();
             }
 
             return newItem;
