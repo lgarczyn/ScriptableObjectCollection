@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -122,19 +123,14 @@ namespace BrunoMikoski.ScriptableObjectCollections
         /// <summary>
         /// Get all items of a specific type from this collection.
         /// </summary>
-        public List<T> OfType<T>() where T : ScriptableObject
+        public IEnumerable<T> OfType<T>() where T : ScriptableObject
         {
-            var items = GetLoadedItems();
-            var result = new List<T>();
-            for (int i = 0; i < items.Count; i++)
-                if (items[i] is T typed)
-                    result.Add(typed);
-            return result;
+            return GetLoadedItems().OfType<T>();
         }
     }
 
-    public class ScriptableObjectCollection<TObjectType> : ScriptableObjectCollection
-        where TObjectType : ScriptableObject, ISOCItem, IReadOnlyList<TObjectType>
+    public class ScriptableObjectCollection<TObjectType> : ScriptableObjectCollection, IReadOnlyList<TObjectType>
+        where TObjectType : ScriptableObject, ISOCItem
     {
         [NonSerialized] private ReadOnlyCollection<TObjectType> cachedValues;
 
@@ -143,5 +139,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
             cachedValues = null;
             base.Unload();
         }
+
+        public IEnumerator<TObjectType> GetEnumerator() => OfType<TObjectType>().GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        public new TObjectType this[int index] => (TObjectType)Items[index];
     }
 }
