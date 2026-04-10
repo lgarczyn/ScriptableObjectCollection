@@ -381,7 +381,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             filteredItems.Clear();
 
-            var allItems = collection.Items;
+            var allItems = collection.GetLoadedItems();
             for (int i = 0; i < allItems.Count; i++)
             {
                 ScriptableObject collectionItem = allItems[i];
@@ -457,7 +457,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             // Force reload from Addressables
             collection.Unload();
-            var items = collection.Items;
+            var items = collection.GetLoadedItems();
 
             for (int i = 0; i < items.Count; i++)
             {

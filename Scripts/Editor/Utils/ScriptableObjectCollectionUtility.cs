@@ -38,7 +38,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (collection == null)
                 return;
 
-            var items = collection.Items;
+            var items = collection.GetLoadedItems();
             int index = -1;
             for (int i = 0; i < items.Count; i++)
             {

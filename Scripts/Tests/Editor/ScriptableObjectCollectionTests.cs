@@ -72,14 +72,14 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             collection.LoadSync();
             LogAssert.ignoreFailingMessages = false;
 
-            Assert.AreEqual(0, collection.Count);
+            Assert.AreEqual(0, collection.GetLoadedItems().Count);
         }
 
         [Test]
-        public void Items_WithInvalidKey_ReturnsEmptyList()
+        public void GetLoadedItems_WithInvalidKey_ReturnsEmptyList()
         {
             LogAssert.ignoreFailingMessages = true;
-            var items = collection.Items;
+            var items = collection.GetLoadedItems();
             LogAssert.ignoreFailingMessages = false;
 
             Assert.IsNotNull(items);

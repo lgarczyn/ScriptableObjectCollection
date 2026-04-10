@@ -102,10 +102,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 }
 
                 // Add every individual item in the collection.
-                for (int j = 0; j < collection.Count; j++)
+                var loadedItems = collection.GetLoadedItems();
+                foreach (var collectionItem in loadedItems)
                 {
-                    ScriptableObject collectionItem = collection[j];
-
                     if (!itemType.IsInstanceOfType(collectionItem))
                         continue;
                     

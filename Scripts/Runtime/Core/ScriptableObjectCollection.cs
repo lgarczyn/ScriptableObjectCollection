@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
@@ -32,19 +33,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         public bool IsLoaded => isLoaded;
 
-        public IReadOnlyList<ScriptableObject> Items
-        {
-            get
-            {
-                if (!isLoaded)
-                    LoadSync();
-                return loadedItems;
-            }
-        }
-
-        public int Count => Items.Count;
-        public ScriptableObject this[int index] => Items[index];
-
         public void LoadSync()
         {
             if (isLoaded) return;
@@ -63,7 +51,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             isLoaded = true;
         }
 
-        public void Unload()
+        public virtual void Unload()
         {
             if (!isLoaded) return;
 
@@ -76,7 +64,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         /// <summary>
         /// Load all collections via Addressables using the shared label.
-        /// Works in both editor and runtime.
         /// </summary>
         public static List<ScriptableObjectCollection> FindAll()
         {
@@ -112,19 +99,56 @@ namespace BrunoMikoski.ScriptableObjectCollections
             return null;
         }
 
+        public IReadOnlyList<ScriptableObject> GetLoadedItems()
+        {
+            if (!isLoaded)
+                LoadSync();
+            return loadedItems;
+        }
+
+        /// <summary>
+        /// Get all items of a specific type from this collection.
+        /// </summary>
+        public List<T> OfType<T>() where T : ScriptableObject
+        {
+            var items = GetLoadedItems();
+            var result = new List<T>();
+            for (int i = 0; i < items.Count; i++)
+                if (items[i] is T typed)
+                    result.Add(typed);
+            return result;
+        }
     }
 
     public class ScriptableObjectCollection<TObjectType> : ScriptableObjectCollection
         where TObjectType : ScriptableObject, ISOCItem
     {
-        public new TObjectType this[int index] => (TObjectType)base[index];
+        [NonSerialized] private ReadOnlyCollection<TObjectType> cachedValues;
 
-        public IEnumerator<TObjectType> GetEnumerator()
+        /// <summary>
+        /// All items in this collection, typed. Loads on first access.
+        /// </summary>
+        public ReadOnlyCollection<TObjectType> Values
         {
-            var items = Items;
-            for (int i = 0; i < items.Count; i++)
-                if (items[i] is TObjectType typed)
-                    yield return typed;
+            get
+            {
+                if (cachedValues == null)
+                {
+                    var items = GetLoadedItems();
+                    var typed = new List<TObjectType>(items.Count);
+                    foreach (var t1 in items)
+                        if (t1 is TObjectType t)
+                            typed.Add(t);
+                    cachedValues = typed.AsReadOnly();
+                }
+                return cachedValues;
+            }
+        }
+
+        public override void Unload()
+        {
+            cachedValues = null;
+            base.Unload();
         }
     }
 }
