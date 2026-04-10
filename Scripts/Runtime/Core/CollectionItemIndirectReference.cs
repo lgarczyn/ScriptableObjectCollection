@@ -85,8 +85,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         private bool TryResolveReference(out TObject result)
         {
-            // GetOrLoadCollection triggers lazy Addressables loading if needed
-            var collection = CollectionsRegistry.Instance.GetOrLoadCollection(CollectionGUID);
+            var collection = ScriptableObjectCollection.LoadByGUID(CollectionGUID);
             if (collection != null)
             {
                 if (collection.TryGetItemByGUID(CollectionItemGUID, out ScriptableObject item))

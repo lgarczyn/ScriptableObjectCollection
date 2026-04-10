@@ -32,7 +32,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             if (registryDirty)
             {
-                // Rebuild registry metadata after changes
+                // Ensure Addressable state is up to date
                 SOCAddressableUtility.SyncAllAddressables();
             }
         }

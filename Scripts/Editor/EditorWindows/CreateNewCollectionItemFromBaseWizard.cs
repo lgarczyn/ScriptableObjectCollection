@@ -67,8 +67,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
                         }
                         else
                         {
-                            if (CollectionsRegistry.Instance.TryGetCollectionFromItemType(targetType,
-                                out ScriptableObjectCollection collection))
+                            var matchingCollections = ScriptableObjectCollection.FindByItemTypeInEditor(targetType);
+                            if (matchingCollections.Count > 0
+                                && matchingCollections[0] is ScriptableObjectCollection collection)
                             {
                                 MonoScript scriptObj = MonoScript.FromScriptableObject(collection);
                                 path = AssetDatabase.GetAssetPath(scriptObj);

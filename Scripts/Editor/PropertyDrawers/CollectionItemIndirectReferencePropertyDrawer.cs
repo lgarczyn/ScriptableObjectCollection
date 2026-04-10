@@ -117,7 +117,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             LongGuid itemGUID = new LongGuid(itemGUIDValueASerializedProperty.longValue, itemGUIDValueBSerializedProperty.longValue);
             LongGuid collectionGUID = new LongGuid(collectionGUIDValueASerializedProperty.longValue, collectionGUIDValueBSerializedProperty.longValue);
             
-            if (!CollectionsRegistry.Instance.TryGetCollectionByGUID(collectionGUID, out ScriptableObjectCollection collection))
+            if (!ScriptableObjectCollection.TryFindByGUIDInEditor(collectionGUID, out ScriptableObjectCollection collection))
                 return false;
             
             if (!collection.TryGetItemByGUID(itemGUID, out ScriptableObject resultItem))

@@ -21,7 +21,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             }
 
             List<ScriptableObjectCollection> possibleCollections =
-                CollectionsRegistry.Instance.GetCollectionsByItemType(selectedObjects[0].GetType());
+                ScriptableObjectCollection.FindByItemTypeInEditor(selectedObjects[0].GetType());
 
             if (possibleCollections == null || possibleCollections.Count <= 1)
             {
@@ -47,7 +47,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 return;
 
             List<ScriptableObjectCollection> possibleCollections =
-                CollectionsRegistry.Instance.GetCollectionsByItemType(items[0].GetType());
+                ScriptableObjectCollection.FindByItemTypeInEditor(items[0].GetType());
 
             if (possibleCollections == null || possibleCollections.Count == 0)
             {

@@ -23,6 +23,64 @@ namespace BrunoMikoski.ScriptableObjectCollections
         }
 
         public string AddressableLabel => $"soc_{GUID.ToBase64String()}";
+        public string AddressableAddress => GetAddressableAddress(GUID);
+
+        public static string GetAddressableAddress(LongGuid collectionGuid)
+        {
+            return $"soc_collection_{collectionGuid.ToBase64String()}";
+        }
+
+        public static ScriptableObjectCollection LoadByGUID(LongGuid collectionGuid)
+        {
+            if (!collectionGuid.IsValid())
+                return null;
+
+            string address = GetAddressableAddress(collectionGuid);
+            var handle = Addressables.LoadAssetAsync<ScriptableObjectCollection>(address);
+            return handle.WaitForCompletion();
+        }
+
+#if UNITY_EDITOR
+        public static List<ScriptableObjectCollection> FindAllInEditor()
+        {
+            var result = new List<ScriptableObjectCollection>();
+            string[] guids = UnityEditor.AssetDatabase.FindAssets($"t:{nameof(ScriptableObjectCollection)}");
+            foreach (string assetGuid in guids)
+            {
+                string path = UnityEditor.AssetDatabase.GUIDToAssetPath(assetGuid);
+                var collection = UnityEditor.AssetDatabase.LoadAssetAtPath<ScriptableObjectCollection>(path);
+                if (collection != null)
+                    result.Add(collection);
+            }
+            return result;
+        }
+
+        public static List<ScriptableObjectCollection> FindByItemTypeInEditor(Type targetItemType)
+        {
+            var result = new List<ScriptableObjectCollection>();
+            foreach (var collection in FindAllInEditor())
+            {
+                Type itemType = collection.GetItemType();
+                if (itemType != null && itemType.IsAssignableFrom(targetItemType))
+                    result.Add(collection);
+            }
+            return result;
+        }
+
+        public static bool TryFindByGUIDInEditor(LongGuid targetGUID, out ScriptableObjectCollection result)
+        {
+            foreach (var collection in FindAllInEditor())
+            {
+                if (collection.GUID == targetGUID)
+                {
+                    result = collection;
+                    return true;
+                }
+            }
+            result = null;
+            return false;
+        }
+#endif
 
         [NonSerialized] private List<ScriptableObject> loadedItems;
         [NonSerialized] private AsyncOperationHandle<IList<ScriptableObject>> itemsHandle;
@@ -74,7 +132,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             loadedItems = null;
             isLoaded = false;
-            ClearCachedValues();
         }
 
         public void GenerateNewGUID()
@@ -133,8 +190,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
             return TryGetItemByGUID<ScriptableObject>(itemGUID, out result);
         }
 
-        protected virtual void ClearCachedValues() { }
-
 #if UNITY_EDITOR
         public void SetEditorItems(List<ScriptableObject> items)
         {
@@ -146,17 +201,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
     public class ScriptableObjectCollection<TObjectType> : ScriptableObjectCollection
         where TObjectType : ScriptableObject, ISOCItem
     {
-        private static List<TObjectType> cachedValues;
-        public static IReadOnlyList<TObjectType> Values
-        {
-            get
-            {
-                if (cachedValues == null)
-                    cachedValues = CollectionsRegistry.Instance.GetAllCollectionItemsOfType<TObjectType>();
-                return cachedValues;
-            }
-        }
-
         public new TObjectType this[int index] => (TObjectType)base[index];
 
         public IEnumerator<TObjectType> GetEnumerator()
@@ -165,11 +209,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
             for (int i = 0; i < items.Count; i++)
                 if (items[i] is TObjectType typed)
                     yield return typed;
-        }
-
-        protected override void ClearCachedValues()
-        {
-            cachedValues = null;
         }
     }
 }

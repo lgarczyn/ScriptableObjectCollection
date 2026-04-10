@@ -119,10 +119,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (collection == null)
             {
                 // Check that the corresponding collection exists.
-                foreach (var meta in CollectionsRegistry.Instance.Entries)
+                foreach (var candidate in ScriptableObjectCollection.FindAllInEditor())
                 {
-                    var candidate = CollectionsRegistry.Instance.GetOrLoadCollection(meta.GUID);
-                    if (candidate != null && collectionType.IsInstanceOfType(candidate))
+                    if (collectionType.IsInstanceOfType(candidate))
                     {
                         collection = candidate;
                         break;

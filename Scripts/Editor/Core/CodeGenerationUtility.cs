@@ -358,7 +358,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 int indentation = 0;
 
                 List<string> directives = new List<string>();
-                directives.Add(typeof(CollectionsRegistry).Namespace);
                 directives.Add(collection.GetType().Namespace);
                 directives.Add(typeof(List<>).Namespace);
                 directives.Add("System");
@@ -395,7 +394,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         private static bool CanGenerateStaticFile(ScriptableObjectCollection collection, out string errorMessage)
         {
-            List<ScriptableObjectCollection> collectionsOfSameType = CollectionsRegistry.Instance.GetCollectionsByItemType(collection.GetItemType());
+            List<ScriptableObjectCollection> collectionsOfSameType = ScriptableObjectCollection.FindByItemTypeInEditor(collection.GetItemType());
             if (collectionsOfSameType.Count > 1)
             {
                 for (int i = 0; i < collectionsOfSameType.Count; i++)
@@ -462,8 +461,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             AppendLine(writer, indentation);
 
-            // Values property - loads collection via registry on first access
-            (long, long) collectionGUIDValues = collection.GUID.GetRawValues();
+            // Values property - loads collection via Addressables on first access
+            string collectionAddress = ScriptableObjectCollection.GetAddressableAddress(collection.GUID);
             AppendLine(writer, indentation,
                 $"public static {collection.GetType().FullName} {publicValuesName}");
             AppendLine(writer, indentation, "{");
@@ -474,7 +473,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             AppendLine(writer, indentation, $"if ({privateValuesName} == null)");
             indentation++;
             AppendLine(writer, indentation,
-                $"{privateValuesName} = ({collection.GetType().FullName})CollectionsRegistry.Instance.GetOrLoadCollection(new LongGuid({collectionGUIDValues.Item1}L, {collectionGUIDValues.Item2}L));");
+                $"{privateValuesName} = Addressables.LoadAssetAsync<{collection.GetType().FullName}>(\"{collectionAddress}\").WaitForCompletion();");
             indentation--;
             AppendLine(writer, indentation, $"return {privateValuesName};");
             indentation--;

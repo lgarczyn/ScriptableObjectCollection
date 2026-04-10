@@ -35,15 +35,15 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 {
                     if (collectionGUID.IsValid())
                     {
-                        cachedCollection = CollectionsRegistry.Instance.GetOrLoadCollection(collectionGUID);
-                    }
-                    else
-                    {
-                        CollectionsRegistry.Instance.TryGetCollectionFromItemType(GetType(), out cachedCollection);
-                        if (cachedCollection != null)
+#if UNITY_EDITOR
+                        if (!Application.isPlaying)
                         {
-                            collectionGUID = cachedCollection.GUID;
-                            ObjectUtility.SetDirty(this);
+                            ScriptableObjectCollection.TryFindByGUIDInEditor(collectionGUID, out cachedCollection);
+                        }
+                        else
+#endif
+                        {
+                            cachedCollection = ScriptableObjectCollection.LoadByGUID(collectionGUID);
                         }
                     }
 

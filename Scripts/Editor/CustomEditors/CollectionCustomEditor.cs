@@ -635,7 +635,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             menu.AddSeparator("");
 
             // Move to another collection
-            List<ScriptableObjectCollection> possibleCollections = CollectionsRegistry.Instance.GetCollectionsByItemType(
+            List<ScriptableObjectCollection> possibleCollections = ScriptableObjectCollection.FindByItemTypeInEditor(
                 collection.GetItemType());
             if (possibleCollections.Count > 0)
             {
@@ -836,8 +836,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
                 Type targetType = Type.GetType($"{lastCollectionFullName}, {assemblyName}");
 
-                if (CollectionsRegistry.Instance.TryGetCollectionFromItemType(targetType,
-                        out ScriptableObjectCollection collection))
+                if (ScriptableObjectCollection.FindByItemTypeInEditor(targetType) is { Count: > 0 } matchingCollections
+                    && matchingCollections[0] is ScriptableObjectCollection collection)
                 {
                     Selection.activeObject = null;
                     LAST_ADDED_COLLECTION_ITEM = SOCEditorUtility.AddNewItem(collection, targetType);

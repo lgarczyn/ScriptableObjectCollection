@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEditor.AddressableAssets;
@@ -29,14 +28,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 return;
             }
 
-            // Ensure registry is addressable
-            var registry = CollectionsRegistry.Instance;
-            if (registry != null)
-                EnsureRegistryAddressable(registry);
-
             // Find all collections
             string[] collectionGuids = AssetDatabase.FindAssets($"t:{nameof(ScriptableObjectCollection)}");
-            var metadataEntries = new List<CollectionMetadata>();
+            int count = 0;
 
             foreach (string assetGuid in collectionGuids)
             {
@@ -50,43 +44,10 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
                 // Label all items in the collection's folder
                 RelabelCollectionItems(collection);
-
-                // Build metadata
-                metadataEntries.Add(new CollectionMetadata(
-                    collection.GUID,
-                    collection.GetType().AssemblyQualifiedName,
-                    collection.GetItemType()?.AssemblyQualifiedName ?? "",
-                    GetCollectionAddress(collection),
-                    collection.AddressableLabel
-                ));
+                count++;
             }
 
-            // Update registry
-            if (registry != null)
-            {
-                registry.SetEntries(metadataEntries);
-                EditorUtility.SetDirty(registry);
-                AssetDatabase.SaveAssets();
-            }
-
-            Debug.Log($"SOC Addressables synced: {metadataEntries.Count} collections processed.");
-        }
-
-        /// <summary>
-        /// Ensure the registry asset is addressable with the known address.
-        /// </summary>
-        public static void EnsureRegistryAddressable(CollectionsRegistry registry)
-        {
-            var settings = AddressableAssetSettingsDefaultObject.Settings;
-            if (settings == null) return;
-
-            string assetPath = AssetDatabase.GetAssetPath(registry);
-            string assetGuid = AssetDatabase.AssetPathToGUID(assetPath);
-            if (string.IsNullOrEmpty(assetGuid)) return;
-
-            var group = GetOrCreateSOCGroup(settings);
-            var entry = settings.CreateOrMoveEntry(assetGuid, group, readOnly: false);
-            entry.address = CollectionsRegistry.RegistryAddress;
+            Debug.Log($"SOC Addressables synced: {count} collections processed.");
         }
 
         /// <summary>

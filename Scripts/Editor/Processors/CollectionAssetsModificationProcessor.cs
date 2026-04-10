@@ -33,20 +33,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 return AssetDeleteResult.DidNotDelete;
             }
 
-            if (type.IsSubclassOf(typeof(ScriptableObjectCollection)) || type == typeof(ScriptableObjectCollection))
-            {
-                // Collection is being deleted - registry will be updated on next sync
-                ScriptableObjectCollection collection =
-                    AssetDatabase.LoadAssetAtPath<ScriptableObjectCollection>(targetAssetPath);
-
-                if (collection != null)
-                {
-                    CollectionsRegistry.Instance.RemoveEntry(collection.GUID);
-                }
-
-                return AssetDeleteResult.DidNotDelete;
-            }
-
             return AssetDeleteResult.DidNotDelete;
         }
     }

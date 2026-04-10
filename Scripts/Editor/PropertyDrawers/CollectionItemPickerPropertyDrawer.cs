@@ -273,7 +273,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
             if (itemType.IsGenericType)
                 itemType = itemType.GetGenericArguments()[0];
 
-            possibleCollections = CollectionsRegistry.Instance.GetCollectionsByItemType(itemType);
+            possibleCollections = ScriptableObjectCollection.FindByItemTypeInEditor(itemType);
             if (possibleCollections.Count == 0)
                 throw new Exception($"No collection found for item type {itemType}");
 
@@ -319,7 +319,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
                 LongGuid itemGUID = new(itemGUIDValueA, itemGUIDValueB);
 
                 bool validReference = false;
-                if(CollectionsRegistry.Instance.TryGetCollectionByGUID(collectionGUID, out ScriptableObjectCollection collection))
+                if(ScriptableObjectCollection.TryFindByGUIDInEditor(collectionGUID, out ScriptableObjectCollection collection))
                 {
                     if (collection.TryGetItemByGUID(itemGUID, out _))
                     {
