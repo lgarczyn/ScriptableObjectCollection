@@ -50,10 +50,4 @@ namespace BrunoMikoski.ScriptableObjectCollections
         /// </summary>
         public string OnSelectCallbackMethod { get; set; }
     }
-
-    //Temporary 
-    [Obsolete("CollectionItemEditorOptions is deprecated, please use SOCItemEditorOptionsAttribute instead.")]
-    public class CollectionItemEditorOptions : SOCItemEditorOptionsAttribute
-    {
-    }
 }

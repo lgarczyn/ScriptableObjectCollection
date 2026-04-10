@@ -1,5 +1,4 @@
-﻿using System;
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEditor.IMGUI.Controls;
 using UnityEngine;
 
@@ -25,30 +24,16 @@ namespace BrunoMikoski.ScriptableObjectCollections.Browser
         private int separatorPosition = 250;
         private bool isDragging;
 
-        private bool viewSettings;
-
         private void OnEnable()
         {
             treeViewState ??= new TreeViewState();
             treeView = new BrowserTreeView(treeViewState);
             treeView.ItemClicked += OnItemClicked;
-
-            BrowserSettings.Instance.SettingsChanged += OnSettingsChanged;
-        }
-
-        private void OnDisable()
-        {
-            BrowserSettings.Instance.SettingsChanged -= OnSettingsChanged;
         }
 
         private void OnItemClicked(BrowserTreeViewItem item)
         {
             itemEditor = Editor.CreateEditor(item.ScriptableObject);
-        }
-
-        private void OnSettingsChanged()
-        {
-            treeView?.Reload();
         }
 
         private void OnGUI()
@@ -70,12 +55,6 @@ namespace BrunoMikoski.ScriptableObjectCollections.Browser
             }
 
             GUILayout.FlexibleSpace();
-
-            if (GUILayout.Button("Settings", EditorStyles.toolbarButton))
-            {
-                SettingsService.OpenProjectSettings("Project/Scriptable Object Collection/Browser");
-            }
-
             EditorGUILayout.EndHorizontal();
         }
 
