@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
@@ -15,20 +15,14 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             foreach (Object obj in selectedObjects)
             {
-                ISOCItem socItem = obj as ISOCItem;
-                if (socItem == null)
+                if (obj is not ISOCItem)
                     return false;
             }
 
             List<ScriptableObjectCollection> possibleCollections =
-                ScriptableObjectCollection.FindByItemTypeInEditor(selectedObjects[0].GetType());
+                ScriptableObjectCollection.FindByItemType(selectedObjects[0].GetType());
 
-            if (possibleCollections == null || possibleCollections.Count <= 1)
-            {
-                return false;
-            }
-
-            return true;
+            return possibleCollections != null && possibleCollections.Count > 1;
         }
 
         [MenuItem("Assets/Move to Different Collection", priority = 10000)]
@@ -47,7 +41,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 return;
 
             List<ScriptableObjectCollection> possibleCollections =
-                ScriptableObjectCollection.FindByItemTypeInEditor(items[0].GetType());
+                ScriptableObjectCollection.FindByItemType(items[0].GetType());
 
             if (possibleCollections == null || possibleCollections.Count == 0)
             {
@@ -55,7 +49,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 return;
             }
 
-            ScriptableObjectCollection currentCollection = items[0].Collection;
+            // Find the current collection from the item's folder
+            string itemPath = AssetDatabase.GetAssetPath(items[0] as Object);
+            ScriptableObjectCollection currentCollection = SOCAddressableUtility.FindCollectionForItemPath(itemPath);
 
             List<ScriptableObjectCollection> filteredCollections = new List<ScriptableObjectCollection>();
             foreach (ScriptableObjectCollection collection in possibleCollections)
@@ -80,8 +76,10 @@ namespace BrunoMikoski.ScriptableObjectCollections
             Object[] selectedObjects = Selection.objects;
             if (selectedObjects == null || selectedObjects.Length != 1)
                 return false;
-            ISOCItem socItem = selectedObjects[0] as ISOCItem;
-            return socItem != null && socItem.Collection != null;
+            if (selectedObjects[0] is not ISOCItem)
+                return false;
+            string itemPath = AssetDatabase.GetAssetPath(selectedObjects[0]);
+            return SOCAddressableUtility.FindCollectionForItemPath(itemPath) != null;
         }
 
         [MenuItem("Assets/Select Collection", priority = 10000)]
@@ -90,9 +88,12 @@ namespace BrunoMikoski.ScriptableObjectCollections
             Object[] selectedObjects = Selection.objects;
             if (selectedObjects == null || selectedObjects.Length != 1)
                 return;
-            ISOCItem socItem = selectedObjects[0] as ISOCItem;
-            if (socItem != null && socItem.Collection != null)
-                Selection.activeObject = socItem.Collection;
+            if (selectedObjects[0] is not ISOCItem)
+                return;
+            string itemPath = AssetDatabase.GetAssetPath(selectedObjects[0]);
+            ScriptableObjectCollection collection = SOCAddressableUtility.FindCollectionForItemPath(itemPath);
+            if (collection != null)
+                Selection.activeObject = collection;
         }
     }
 }

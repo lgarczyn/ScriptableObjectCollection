@@ -1,7 +1,5 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using UnityEditor;
 using UnityEditor.AddressableAssets;
 using UnityEngine;
@@ -11,44 +9,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
 {
     /// <summary>
     /// Editor-only utilities for managing collection items.
-    /// Extracted from ScriptableObjectCollection to keep the runtime class minimal.
     /// </summary>
     public static class SOCEditorUtility
     {
-        /// <summary>
-        /// Find all items of the collection's item type in the collection's folder (and subfolders).
-        /// This is the editor-time equivalent of Addressable label-based loading at runtime.
-        /// </summary>
-        public static List<ScriptableObject> GetItemsInCollectionFolder(ScriptableObjectCollection collection)
-        {
-            string assetPath = AssetDatabase.GetAssetPath(collection);
-            string folder = Path.GetDirectoryName(assetPath);
-            return FindItemsInFolder(collection, folder);
-        }
-
-        /// <summary>
-        /// Find all items of the collection's item type in the given folder.
-        /// </summary>
-        public static List<ScriptableObject> FindItemsInFolder(ScriptableObjectCollection collection, string folder)
-        {
-            Type itemType = collection.GetItemType();
-            if (itemType == null)
-                return new List<ScriptableObject>();
-
-            string[] guids = AssetDatabase.FindAssets($"t:{itemType.Name}", new[] { folder });
-            var items = new List<ScriptableObject>();
-
-            foreach (string guid in guids)
-            {
-                string path = AssetDatabase.GUIDToAssetPath(guid);
-                var item = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
-                if (item is ISOCItem)
-                    items.Add(item);
-            }
-
-            return items;
-        }
-
         /// <summary>
         /// Create a new item asset in the collection's Items/ subfolder.
         /// </summary>
@@ -74,15 +37,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             newItem.name = uniqueName;
 
-            if (newItem is ISOCItem socItem)
-            {
-                socItem.GenerateNewGUID();
-                socItem.SetCollection(collection);
-            }
-
             AssetDatabase.CreateAsset(newItem, uniqueAssetPath);
 
-            // Ensure the new item is addressable with the collection's label (no-op if Addressables not configured)
+            // Ensure the new item is addressable with the collection's label
             if (AddressableAssetSettingsDefaultObject.Settings != null)
             {
                 SOCAddressableUtility.EnsureItemAddressable(uniqueAssetPath, collection.AddressableLabel);
@@ -97,9 +54,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
         /// </summary>
         public static void RemoveItem(ScriptableObject item, bool deleteAsset)
         {
-            if (item is ISOCItem socItem)
-                socItem.ClearCollection();
-
             if (deleteAsset)
             {
                 string path = AssetDatabase.GetAssetPath(item);
@@ -120,27 +74,13 @@ namespace BrunoMikoski.ScriptableObjectCollections
         }
 
         /// <summary>
-        /// Populate the collection's editor items list from its folder.
-        /// Call this before accessing collection.Items in editor code.
-        /// </summary>
-        public static void RefreshEditorItems(ScriptableObjectCollection collection)
-        {
-            var items = GetItemsInCollectionFolder(collection);
-            collection.SetEditorItems(items);
-        }
-
-        /// <summary>
         /// Find an existing item by name, or create a new one if not found.
         /// Used by the generator system.
         /// </summary>
         public static ISOCItem GetOrAddNewItem(ScriptableObjectCollection collection, Type itemType, string targetName)
         {
-            var items = GetItemsInCollectionFolder(collection);
-            foreach (var item in items)
-            {
-                if (item.name.Equals(targetName, StringComparison.Ordinal))
-                    return item as ISOCItem;
-            }
+            if (collection.TryGetItemByName(targetName, out ScriptableObject existing))
+                return existing as ISOCItem;
 
             return AddNewItem(collection, itemType, targetName) as ISOCItem;
         }
@@ -159,10 +99,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             string fileName = Path.GetFileName(sourcePath);
             string targetPath = AssetDatabase.GenerateUniqueAssetPath(Path.Combine(itemsFolder, fileName));
 
-            item.ClearCollection();
             AssetDatabase.MoveAsset(sourcePath, targetPath);
-            item.SetCollection(targetCollection);
-            EditorUtility.SetDirty(assetObject);
         }
     }
 }

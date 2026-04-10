@@ -297,9 +297,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             DisablePartialClassGenerationIfDisallowed(collection);
 
-            // Ensure items are loaded for code generation
-            SOCEditorUtility.RefreshEditorItems(collection);
-
             string fileName = SOCSettings.Instance.GetStaticFilenameForCollection(collection);
             string nameSpace = SOCSettings.Instance.GetNamespaceForCollection(collection);
             string finalFolder = AssetDatabase.GetAssetPath(SOCSettings.Instance.GetParentDefaultAssetScriptsFolderForCollection(collection));
@@ -352,7 +349,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         private static bool CanGenerateStaticFile(ScriptableObjectCollection collection, out string errorMessage)
         {
-            List<ScriptableObjectCollection> collectionsOfSameType = ScriptableObjectCollection.FindByItemTypeInEditor(collection.GetItemType());
+            List<ScriptableObjectCollection> collectionsOfSameType = ScriptableObjectCollection.FindByItemType(collection.GetItemType());
             if (collectionsOfSameType.Count > 1)
             {
                 for (int i = 0; i < collectionsOfSameType.Count; i++)
@@ -440,7 +437,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             AppendLine(writer, indentation, "}");
             AppendLine(writer, indentation);
 
-            // Individual item properties
+            // Individual item properties — load directly via Addressables using the asset GUID
             for (int i = 0; i < items.Count; i++)
             {
                 ScriptableObject collectionItem = items[i];
@@ -448,11 +445,11 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 string privateStaticCachedName = $"cached{collectionNameFirstUpper}";
                 Type type = useBaseClass ? collection.GetItemType() : collectionItem.GetType();
 
-                ISOCItem socItem = collectionItem as ISOCItem;
-                if (socItem == null)
+                if (collectionItem is not ISOCItem)
                     continue;
 
-                (long, long) collectionItemGUIDValues = socItem.GUID.GetRawValues();
+                string assetPath = AssetDatabase.GetAssetPath(collectionItem);
+                string assetGuid = AssetDatabase.AssetPathToGUID(assetPath);
 
                 AppendLine(writer, indentation, $"public static {type.FullName} {collectionNameFirstUpper}");
                 AppendLine(writer, indentation, "{");
@@ -463,7 +460,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 AppendLine(writer, indentation, $"if ({privateStaticCachedName} == null)");
                 indentation++;
                 AppendLine(writer, indentation,
-                    $"{publicValuesName}.TryGetItemByGUID(new LongGuid({collectionItemGUIDValues.Item1}L, {collectionItemGUIDValues.Item2}L), out {privateStaticCachedName});");
+                    $"{privateStaticCachedName} = Addressables.LoadAssetAsync<{type.FullName}>(\"{assetGuid}\").WaitForCompletion();");
                 indentation--;
                 AppendLine(writer, indentation, $"return {privateStaticCachedName};");
                 indentation--;

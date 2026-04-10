@@ -70,11 +70,23 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         public static void GoToItem(ISOCItem socItem)
         {
-            // Find the item's index in the editor-time items list
-            var items = SOCEditorUtility.GetItemsInCollectionFolder(socItem.Collection);
-            int index = items.IndexOf(socItem as ScriptableObject);
+            string itemPath = AssetDatabase.GetAssetPath(socItem as ScriptableObject);
+            ScriptableObjectCollection collection = SOCAddressableUtility.FindCollectionForItemPath(itemPath);
+            if (collection == null)
+                return;
+
+            var items = collection.Items;
+            int index = -1;
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (items[i] == (ScriptableObject)socItem)
+                {
+                    index = i;
+                    break;
+                }
+            }
             SessionState.SetInt(COLLECTION_CUSTOM_EDITOR_GO_TO_ITEM_INDEX_KEY, index);
-            Selection.activeObject = socItem.Collection;
+            Selection.activeObject = collection;
         }
 
         public static bool IsTryingToGoToItem(out int targetIndex)

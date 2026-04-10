@@ -9,15 +9,18 @@ namespace BrunoMikoski.ScriptableObjectCollections
 {
     public abstract class ScriptableObjectCollection : ScriptableObject
     {
+        public const string AllCollectionsLabel = "soc_collections";
+
         [SerializeField, HideInInspector]
         private LongGuid guid;
         public LongGuid GUID
         {
             get
             {
-                if (guid.IsValid())
-                    return guid;
-                GenerateNewGUID();
+#if UNITY_EDITOR
+                if (!guid.IsValid())
+                    GenerateNewGUID();
+#endif
                 return guid;
             }
         }
@@ -40,88 +43,31 @@ namespace BrunoMikoski.ScriptableObjectCollections
             return handle.WaitForCompletion();
         }
 
-#if UNITY_EDITOR
         /// <summary>
-        /// Find all collections in the project. Only loads items for collections that need them.
+        /// Load all collections via Addressables using the shared label.
+        /// Works in both editor and runtime.
         /// </summary>
-        public static List<ScriptableObjectCollection> FindAllInEditor()
+        public static List<ScriptableObjectCollection> FindAll()
         {
-            var result = new List<ScriptableObjectCollection>();
-            string[] guids = UnityEditor.AssetDatabase.FindAssets($"t:{nameof(ScriptableObjectCollection)}");
-            foreach (string assetGuid in guids)
-            {
-                string path = UnityEditor.AssetDatabase.GUIDToAssetPath(assetGuid);
-                var collection = UnityEditor.AssetDatabase.LoadAssetAtPath<ScriptableObjectCollection>(path);
-                if (collection != null)
-                    result.Add(collection);
-            }
-            return result;
+            var handle = Addressables.LoadAssetsAsync<ScriptableObjectCollection>(AllCollectionsLabel, null);
+            var results = handle.WaitForCompletion();
+            return new List<ScriptableObjectCollection>(results);
         }
 
         /// <summary>
-        /// Find collections whose item type matches, and ensure their items are loaded.
-        /// Only loads items for matching collections — skips the rest.
+        /// Load all collections whose item type matches the given type.
         /// </summary>
-        public static List<ScriptableObjectCollection> FindByItemTypeInEditor(Type targetItemType)
+        public static List<ScriptableObjectCollection> FindByItemType(Type targetItemType)
         {
             var result = new List<ScriptableObjectCollection>();
-            foreach (var collection in FindAllInEditor())
+            foreach (var collection in FindAll())
             {
                 Type itemType = collection.GetItemType();
                 if (itemType != null && itemType.IsAssignableFrom(targetItemType))
-                {
-                    EnsureEditorItemsLoaded(collection);
                     result.Add(collection);
-                }
             }
             return result;
         }
-
-        /// <summary>
-        /// Find a collection by GUID and ensure its items are loaded.
-        /// </summary>
-        public static bool TryFindByGUIDInEditor(LongGuid targetGUID, out ScriptableObjectCollection result)
-        {
-            foreach (var collection in FindAllInEditor())
-            {
-                if (collection.GUID == targetGUID)
-                {
-                    EnsureEditorItemsLoaded(collection);
-                    result = collection;
-                    return true;
-                }
-            }
-            result = null;
-            return false;
-        }
-
-        /// <summary>
-        /// Ensures a collection's Items are populated from its folder in editor.
-        /// Inlined here so the runtime assembly doesn't need to reference the editor assembly.
-        /// </summary>
-        private static void EnsureEditorItemsLoaded(ScriptableObjectCollection collection)
-        {
-            if (collection.Items.Count > 0)
-                return;
-
-            string collectionPath = UnityEditor.AssetDatabase.GetAssetPath(collection);
-            string folder = System.IO.Path.GetDirectoryName(collectionPath);
-            Type itemType = collection.GetItemType();
-            if (itemType == null)
-                return;
-
-            string[] itemGuids = UnityEditor.AssetDatabase.FindAssets($"t:{itemType.Name}", new[] { folder });
-            var items = new List<ScriptableObject>();
-            foreach (string itemGuid in itemGuids)
-            {
-                string itemPath = UnityEditor.AssetDatabase.GUIDToAssetPath(itemGuid);
-                var item = UnityEditor.AssetDatabase.LoadAssetAtPath<ScriptableObject>(itemPath);
-                if (item is ISOCItem)
-                    items.Add(item);
-            }
-            collection.SetEditorItems(items);
-        }
-#endif
 
         [NonSerialized] private List<ScriptableObject> loadedItems;
         [NonSerialized] private AsyncOperationHandle<IList<ScriptableObject>> itemsHandle;
@@ -133,14 +79,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
         {
             get
             {
-#if UNITY_EDITOR
-                if (!Application.isPlaying)
-                {
-                    if (loadedItems == null)
-                        loadedItems = new List<ScriptableObject>();
-                    return loadedItems;
-                }
-#endif
                 if (!isLoaded)
                     LoadSync();
                 return loadedItems;
@@ -156,11 +94,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             itemsHandle = Addressables.LoadAssetsAsync<ScriptableObject>(AddressableLabel, null);
             loadedItems = new List<ScriptableObject>(itemsHandle.WaitForCompletion());
-
-            foreach (var item in loadedItems)
-                if (item is ISOCItem socItem)
-                    socItem.SetCollectionRuntime(this);
-
             isLoaded = true;
         }
 
@@ -175,11 +108,13 @@ namespace BrunoMikoski.ScriptableObjectCollections
             isLoaded = false;
         }
 
+#if UNITY_EDITOR
         public void GenerateNewGUID()
         {
             guid = LongGuid.NewGuid();
             ObjectUtility.SetDirty(this);
         }
+#endif
 
         public virtual Type GetItemType()
         {
@@ -195,48 +130,23 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         public bool TryGetItemByName(string targetItemName, out ScriptableObject result)
         {
+            return TryGetItemByName<ScriptableObject>(targetItemName, out result);
+        }
+
+        public bool TryGetItemByName<T>(string targetItemName, out T result) where T : ScriptableObject
+        {
             var items = Items;
             for (int i = 0; i < items.Count; i++)
             {
-                if (items[i] != null && string.Equals(items[i].name, targetItemName, StringComparison.Ordinal))
+                if (items[i] != null && string.Equals(items[i].name, targetItemName, StringComparison.Ordinal) && items[i] is T typed)
                 {
-                    result = items[i];
+                    result = typed;
                     return true;
                 }
             }
             result = null;
             return false;
         }
-
-        public bool TryGetItemByGUID<T>(LongGuid itemGUID, out T result) where T : ScriptableObject
-        {
-            if (itemGUID.IsValid())
-            {
-                var items = Items;
-                for (int i = 0; i < items.Count; i++)
-                {
-                    if (items[i] is ISOCItem socItem && socItem.GUID == itemGUID)
-                    {
-                        result = items[i] as T;
-                        return result != null;
-                    }
-                }
-            }
-            result = null;
-            return false;
-        }
-
-        public bool TryGetItemByGUID(LongGuid itemGUID, out ScriptableObject result)
-        {
-            return TryGetItemByGUID<ScriptableObject>(itemGUID, out result);
-        }
-
-#if UNITY_EDITOR
-        public void SetEditorItems(List<ScriptableObject> items)
-        {
-            loadedItems = items;
-        }
-#endif
     }
 
     public class ScriptableObjectCollection<TObjectType> : ScriptableObjectCollection

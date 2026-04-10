@@ -396,7 +396,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             {
                 if (collectionItem == null)
                 {
-                    List<ScriptableObjectCollection> possibleCollections = ScriptableObjectCollection.FindByItemTypeInEditor(currentItemType);
+                    List<ScriptableObjectCollection> possibleCollections = ScriptableObjectCollection.FindByItemType(currentItemType);
                     if (possibleCollections.Count > 0)
                     {
                         Selection.activeObject = possibleCollections.First();

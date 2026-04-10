@@ -77,7 +77,6 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             // Create item in Items subfolder
             AssetDatabaseUtils.CreatePathIfDoesntExist($"{TestFolder}/Items");
             var item = ScriptableObject.CreateInstance<TestItem>();
-            item.GenerateNewGUID();
             AssetDatabase.CreateAsset(item, $"{TestFolder}/Items/ChildItem.asset");
             AssetDatabase.SaveAssets();
 

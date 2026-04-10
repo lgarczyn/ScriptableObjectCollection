@@ -85,9 +85,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             collection = (ScriptableObjectCollection)target;
 
-            // Populate items via folder scan
-            SOCEditorUtility.RefreshEditorItems(collection);
-
             collectionItemListView = root.Q<ListView>("items-list-view");
 
             collectionItemListView.makeItem = MakeCollectionItemListItem;
@@ -436,7 +433,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             filteredItems.Clear();
 
-            var allItems = SOCEditorUtility.GetItemsInCollectionFolder(collection);
+            var allItems = collection.Items;
             for (int i = 0; i < allItems.Count; i++)
             {
                 ScriptableObject collectionItem = allItems[i];
@@ -510,8 +507,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
         {
             filteredItems.Clear();
 
-            var items = SOCEditorUtility.GetItemsInCollectionFolder(collection);
-            collection.SetEditorItems(items);
+            // Force reload from Addressables
+            collection.Unload();
+            var items = collection.Items;
 
             for (int i = 0; i < items.Count; i++)
             {
@@ -635,7 +633,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             menu.AddSeparator("");
 
             // Move to another collection
-            List<ScriptableObjectCollection> possibleCollections = ScriptableObjectCollection.FindByItemTypeInEditor(
+            List<ScriptableObjectCollection> possibleCollections = ScriptableObjectCollection.FindByItemType(
                 collection.GetItemType());
             if (possibleCollections.Count > 0)
             {
@@ -836,7 +834,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
                 Type targetType = Type.GetType($"{lastCollectionFullName}, {assemblyName}");
 
-                if (ScriptableObjectCollection.FindByItemTypeInEditor(targetType) is { Count: > 0 } matchingCollections
+                if (ScriptableObjectCollection.FindByItemType(targetType) is { Count: > 0 } matchingCollections
                     && matchingCollections[0] is ScriptableObjectCollection collection)
                 {
                     Selection.activeObject = null;

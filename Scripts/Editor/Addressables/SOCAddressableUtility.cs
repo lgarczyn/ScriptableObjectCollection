@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEditor.AddressableAssets;
@@ -15,6 +16,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
     public static class SOCAddressableUtility
     {
         private const string SOCGroupName = "ScriptableObjectCollections";
+        public const string CollectionsLabel = "soc_collections";
 
         /// <summary>
         /// Full rescan: find all collections, label all items, update registry metadata.
@@ -64,6 +66,10 @@ namespace BrunoMikoski.ScriptableObjectCollections
             var group = GetOrCreateSOCGroup(settings);
             var entry = settings.CreateOrMoveEntry(assetGuid, group, readOnly: false);
             entry.address = GetCollectionAddress(collection);
+
+            settings.AddLabel(CollectionsLabel);
+            if (!entry.labels.Contains(CollectionsLabel))
+                entry.labels.Add(CollectionsLabel);
         }
 
         /// <summary>
@@ -94,7 +100,20 @@ namespace BrunoMikoski.ScriptableObjectCollections
         {
             string collectionPath = AssetDatabase.GetAssetPath(collection);
             string folder = Path.GetDirectoryName(collectionPath);
-            var items = SOCEditorUtility.FindItemsInFolder(collection, folder);
+
+            Type itemType = collection.GetItemType();
+            if (itemType == null) return;
+
+            string[] guids = AssetDatabase.FindAssets($"t:{itemType.Name}", new[] { folder });
+            var items = new List<ScriptableObject>();
+            foreach (string guid in guids)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                var item = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
+                if (item is ISOCItem)
+                    items.Add(item);
+            }
+
             string label = collection.AddressableLabel;
 
             foreach (var item in items)

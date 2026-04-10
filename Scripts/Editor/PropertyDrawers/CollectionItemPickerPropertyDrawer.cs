@@ -237,7 +237,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
             if (itemType.IsGenericType)
                 itemType = itemType.GetGenericArguments()[0];
 
-            possibleCollections = ScriptableObjectCollection.FindByItemTypeInEditor(itemType);
+            possibleCollections = ScriptableObjectCollection.FindByItemType(itemType);
             if (possibleCollections.Count == 0)
                 throw new Exception($"No collection found for item type {itemType}");
 

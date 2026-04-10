@@ -30,10 +30,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
 #if UNITY_EDITOR
             Undo.RecordObject(item as ScriptableObject, "Move Item");
 
-            // Clear old collection reference, set new one
-            item.ClearCollection();
-            item.SetCollection(targetCollection);
-
             string itemPath = AssetDatabase.GetAssetPath(item as ScriptableObject);
             string targetCollectionPath = AssetDatabase.GetAssetPath(targetCollection);
 

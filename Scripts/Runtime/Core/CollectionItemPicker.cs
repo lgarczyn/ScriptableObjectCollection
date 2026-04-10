@@ -266,7 +266,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
             for (int i = 0; i < itemReferences.Count; i++)
             {
                 TItemType resolved = ResolveReference(itemReferences[i]);
-                if (resolved != null && resolved is ISOCItem socItem && item is ISOCItem targetSoc && socItem.GUID == targetSoc.GUID)
+                if (resolved == item)
                     return i;
             }
             return -1;

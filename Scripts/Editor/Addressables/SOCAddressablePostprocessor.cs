@@ -54,19 +54,12 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 return true;
             }
 
-            if (asset is ISOCItem item)
+            if (asset is ISOCItem)
             {
                 // Find parent collection by folder
                 var parentCollection = SOCAddressableUtility.FindCollectionForItemPath(assetPath);
                 if (parentCollection != null)
                 {
-                    // Set the item's collection reference if not already set
-                    if (item.Collection == null || item.Collection.GUID != parentCollection.GUID)
-                    {
-                        item.SetCollection(parentCollection);
-                        EditorUtility.SetDirty(asset);
-                    }
-
                     SOCAddressableUtility.EnsureItemAddressable(assetPath, parentCollection.AddressableLabel);
                     return true;
                 }

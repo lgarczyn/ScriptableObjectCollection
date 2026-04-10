@@ -26,7 +26,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             SOCItemEditorOptionsAttribute options, SerializedProperty serializedProperty) : base(state)
         {
             itemType = targetItemType;
-            collections = ScriptableObjectCollection.FindByItemTypeInEditor(itemType);
+            collections = ScriptableObjectCollection.FindByItemType(itemType);
             minimumSize = new Vector2(200, 300);
             this.options = options;
             this.serializedProperty = serializedProperty;

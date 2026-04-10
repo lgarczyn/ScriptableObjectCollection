@@ -119,7 +119,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (collection == null)
             {
                 // Check that the corresponding collection exists.
-                foreach (var candidate in ScriptableObjectCollection.FindAllInEditor())
+                foreach (var candidate in ScriptableObjectCollection.FindAll())
                 {
                     if (collectionType.IsInstanceOfType(candidate))
                     {
@@ -152,7 +152,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 .GetValue(generator);
             if (shouldRemoveNonGeneratedItems)
             {
-                var items = SOCEditorUtility.GetItemsInCollectionFolder(collection);
+                var items = new List<ScriptableObject>(collection.Items);
                 for (int i = items.Count - 1; i >= 0; i--)
                 {
                     // Remove any items for which there isn't a template by the same name.

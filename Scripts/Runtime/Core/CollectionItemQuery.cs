@@ -87,7 +87,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
                         {
                             continue;
                         }
-                        if (socItem.GUID.Equals(item.GUID))
+                        if (socItem == item)
                         {
                             matchCount++;
                         }

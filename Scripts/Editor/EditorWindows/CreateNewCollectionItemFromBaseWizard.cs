@@ -67,7 +67,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                         }
                         else
                         {
-                            var matchingCollections = ScriptableObjectCollection.FindByItemTypeInEditor(targetType);
+                            var matchingCollections = ScriptableObjectCollection.FindByItemType(targetType);
                             if (matchingCollections.Count > 0
                                 && matchingCollections[0] is ScriptableObjectCollection collection)
                             {
