@@ -44,7 +44,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
         }
 
         private Type currentItemType;
-        private bool enforceIndirectReferenceUse;
 
 
         private SOCItemEditorOptionsAttribute GetOptionsAttribute()
@@ -59,11 +58,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
-            if (!enforceIndirectReferenceUse)
-            {
-                return Mathf.Max(totalHeight, EditorGUIUtility.singleLineHeight);
-            }
-
             return EditorGUIUtility.singleLineHeight * 2 + EditorGUIUtility.standardVerticalSpacing;
         }
 
@@ -79,32 +73,14 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             item = property.objectReferenceValue as ScriptableObject;
 
-            if (item is ISOCItem socItem)
-            {
-                if (SOCSettings.Instance.GetEnforceIndirectAccess(socItem.Collection))
-                {
-                    enforceIndirectReferenceUse = true;
-                }
-            }
             EditorGUI.BeginProperty(position, label, property);
 
-            if (enforceIndirectReferenceUse)
-            {
-                EditorGUI.LabelField(position, label);
-
-                position.height = EditorGUIUtility.singleLineHeight * 2;
-                position.x += 150;
-                EditorGUI.HelpBox(position, $"This collection enforces IndirectAccess, use {currentItemType.Name}IndirectAccess", MessageType.Error);
-            }
-            else
-            {
-                DrawCollectionItemDrawer(ref position, property, item, label,
-                    newItem =>
-                    {
-                        property.objectReferenceValue = newItem;
-                        property.serializedObject.ApplyModifiedProperties();
-                    });
-            }
+            DrawCollectionItemDrawer(ref position, property, item, label,
+                newItem =>
+                {
+                    property.objectReferenceValue = newItem;
+                    property.serializedObject.ApplyModifiedProperties();
+                });
             EditorGUI.EndProperty();
         }
 

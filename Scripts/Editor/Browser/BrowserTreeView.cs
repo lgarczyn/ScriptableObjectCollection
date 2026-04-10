@@ -54,7 +54,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Browser
 
                 BrowserTreeViewItem parentItem = new(id++, 0, collection);
 
-                foreach (ScriptableObject item in collection)
+                foreach (ScriptableObject item in collection.Items)
                 {
                     BrowserTreeViewItem childItem = new(id++, 1, item);
                     parentItem.AddChild(childItem);
