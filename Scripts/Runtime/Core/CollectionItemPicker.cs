@@ -80,17 +80,6 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
         }
 
         #region Booleans and Checks
-        public bool HasAny(params TItemType[] itemTypes)
-        {
-            for (int i = 0; i < itemTypes.Length; i++)
-            {
-                if (Contains(itemTypes[i]))
-                    return true;
-            }
-
-            return false;
-        }
-
         public bool HasAll(params TItemType[] itemTypes)
         {
             for (int i = 0; i < itemTypes.Length; i++)
@@ -113,78 +102,12 @@ namespace BrunoMikoski.ScriptableObjectCollections.Picker
             return true;
         }
 
-        public bool HasNone(params TItemType[] itemTypes)
-        {
-            for (int i = 0; i < itemTypes.Length; i++)
-            {
-                if (Contains(itemTypes[i]))
-                    return false;
-            }
-
-            return true;
-        }
         #endregion
-
-        #region Operators
 
         public static implicit operator List<TItemType>(CollectionItemPicker<TItemType> targetPicker)
         {
             return targetPicker.Items;
         }
-
-        public static CollectionItemPicker<TItemType> operator +(CollectionItemPicker<TItemType> picker1,
-            CollectionItemPicker<TItemType> picker2)
-        {
-            CollectionItemPicker<TItemType> result = new CollectionItemPicker<TItemType>();
-
-            for (int i = 0; i < picker1.Count; i++)
-                result.Add(picker1[i]);
-
-            for (int i = 0; i < picker2.Count; i++)
-            {
-                TItemType item = picker2[i];
-                if (!result.Contains(item))
-                    result.Add(item);
-            }
-
-            return result;
-        }
-
-        public static CollectionItemPicker<TItemType> operator -(CollectionItemPicker<TItemType> picker1,
-            CollectionItemPicker<TItemType> picker2)
-        {
-            CollectionItemPicker<TItemType> result = new CollectionItemPicker<TItemType>();
-
-            for (int i = 0; i < picker1.Count; i++)
-                result.Add(picker1[i]);
-
-            for (int i = 0; i < picker2.Count; i++)
-            {
-                TItemType item = picker2[i];
-                if (result.Contains(item))
-                    result.Remove(item);
-            }
-
-            return result;
-        }
-
-        public static CollectionItemPicker<TItemType> operator +(CollectionItemPicker<TItemType> picker,
-            TItemType targetItem)
-        {
-            if (!picker.Contains(targetItem))
-                picker.Add(targetItem);
-
-            return picker;
-        }
-
-        public static CollectionItemPicker<TItemType> operator -(CollectionItemPicker<TItemType> picker,
-            TItemType targetItem)
-        {
-            picker.Remove(targetItem);
-            return picker;
-        }
-
-        #endregion
 
         #region IList members implementation
 
