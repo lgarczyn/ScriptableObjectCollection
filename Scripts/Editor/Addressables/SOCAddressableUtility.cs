@@ -63,7 +63,21 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 count++;
             }
 
-            Debug.Log($"SOC Addressables synced: {count} collections processed.");
+            // Label all IRegisteredSO assets
+            string[] registeredGuids = AssetDatabase.FindAssets($"t:{nameof(ScriptableObject)}");
+            int registeredCount = 0;
+            foreach (string registeredGuid in registeredGuids)
+            {
+                string registeredPath = AssetDatabase.GUIDToAssetPath(registeredGuid);
+                Type registeredType = AssetDatabase.GetMainAssetTypeAtPath(registeredPath);
+                if (registeredType != null && typeof(IRegisteredSO).IsAssignableFrom(registeredType))
+                {
+                    EnsureItemAddressable(registeredPath, SORegistry.RegisteredLabel);
+                    registeredCount++;
+                }
+            }
+
+            Debug.Log($"SOC Addressables synced: {count} collections, {registeredCount} registered SOs processed.");
         }
 
         /// <summary>

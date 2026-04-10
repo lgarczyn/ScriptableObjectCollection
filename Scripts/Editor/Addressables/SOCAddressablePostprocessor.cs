@@ -116,13 +116,22 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
                     if (changedPath.StartsWith(info.Folder, StringComparison.Ordinal))
                     {
-                        // Only load and process if it's actually an ISOCItem
                         Type assetType = AssetDatabase.GetMainAssetTypeAtPath(changedPath);
                         if (assetType != null && typeof(ISOCItem).IsAssignableFrom(assetType))
                         {
                             SOCAddressableUtility.EnsureItemAddressable(changedPath, info.Collection.AddressableLabel);
                         }
                     }
+                }
+            }
+
+            // Auto-label IRegisteredSO assets
+            foreach (string changedPath in changedPaths)
+            {
+                Type assetType = AssetDatabase.GetMainAssetTypeAtPath(changedPath);
+                if (assetType != null && typeof(IRegisteredSO).IsAssignableFrom(assetType))
+                {
+                    SOCAddressableUtility.EnsureItemAddressable(changedPath, SORegistry.RegisteredLabel);
                 }
             }
         }

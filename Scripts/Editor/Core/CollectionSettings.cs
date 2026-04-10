@@ -33,9 +33,11 @@ namespace BrunoMikoski.ScriptableObjectCollections
             }
             else
             {
-                string baseClassPath = AssetDatabase.GetAssetPath(MonoScript.FromScriptableObject(targetCollection));
-                string parentFolder = Path.GetDirectoryName(baseClassPath);
-                ParentFolderPath = parentFolder;
+                MonoScript script = MonoScript.FromScriptableObject(targetCollection);
+                string baseClassPath = script != null ? AssetDatabase.GetAssetPath(script) : null;
+                ParentFolderPath = !string.IsNullOrEmpty(baseClassPath)
+                    ? Path.GetDirectoryName(baseClassPath)
+                    : AssetDatabase.GetAssetPath(targetCollection);
             }
 
             bool canBePartial = CodeGenerationUtility.CheckIfCanBePartial(targetCollection, ParentFolderPath);
