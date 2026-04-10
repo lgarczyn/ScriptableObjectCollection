@@ -92,8 +92,17 @@ namespace BrunoMikoski.ScriptableObjectCollections
         {
             if (isLoaded) return;
 
-            itemsHandle = Addressables.LoadAssetsAsync<ScriptableObject>(AddressableLabel, null);
-            loadedItems = new List<ScriptableObject>(itemsHandle.WaitForCompletion());
+            try
+            {
+                itemsHandle = Addressables.LoadAssetsAsync<ScriptableObject>(AddressableLabel, null);
+                var result = itemsHandle.WaitForCompletion();
+                loadedItems = result != null ? new List<ScriptableObject>(result) : new List<ScriptableObject>();
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"Failed to load items for collection '{name}': {e.Message}");
+                loadedItems = new List<ScriptableObject>();
+            }
             isLoaded = true;
         }
 
