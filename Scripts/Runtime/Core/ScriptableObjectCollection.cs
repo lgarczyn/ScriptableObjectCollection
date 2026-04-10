@@ -41,6 +41,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
         }
 
 #if UNITY_EDITOR
+        /// <summary>
+        /// Find all collections in the project. Only loads items for collections that need them.
+        /// </summary>
         public static List<ScriptableObjectCollection> FindAllInEditor()
         {
             var result = new List<ScriptableObjectCollection>();
@@ -50,12 +53,46 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 string path = UnityEditor.AssetDatabase.GUIDToAssetPath(assetGuid);
                 var collection = UnityEditor.AssetDatabase.LoadAssetAtPath<ScriptableObjectCollection>(path);
                 if (collection != null)
+                    result.Add(collection);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Find collections whose item type matches, and ensure their items are loaded.
+        /// Only loads items for matching collections — skips the rest.
+        /// </summary>
+        public static List<ScriptableObjectCollection> FindByItemTypeInEditor(Type targetItemType)
+        {
+            var result = new List<ScriptableObjectCollection>();
+            foreach (var collection in FindAllInEditor())
+            {
+                Type itemType = collection.GetItemType();
+                if (itemType != null && itemType.IsAssignableFrom(targetItemType))
                 {
                     EnsureEditorItemsLoaded(collection);
                     result.Add(collection);
                 }
             }
             return result;
+        }
+
+        /// <summary>
+        /// Find a collection by GUID and ensure its items are loaded.
+        /// </summary>
+        public static bool TryFindByGUIDInEditor(LongGuid targetGUID, out ScriptableObjectCollection result)
+        {
+            foreach (var collection in FindAllInEditor())
+            {
+                if (collection.GUID == targetGUID)
+                {
+                    EnsureEditorItemsLoaded(collection);
+                    result = collection;
+                    return true;
+                }
+            }
+            result = null;
+            return false;
         }
 
         /// <summary>
@@ -83,32 +120,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
                     items.Add(item);
             }
             collection.SetEditorItems(items);
-        }
-
-        public static List<ScriptableObjectCollection> FindByItemTypeInEditor(Type targetItemType)
-        {
-            var result = new List<ScriptableObjectCollection>();
-            foreach (var collection in FindAllInEditor())
-            {
-                Type itemType = collection.GetItemType();
-                if (itemType != null && itemType.IsAssignableFrom(targetItemType))
-                    result.Add(collection);
-            }
-            return result;
-        }
-
-        public static bool TryFindByGUIDInEditor(LongGuid targetGUID, out ScriptableObjectCollection result)
-        {
-            foreach (var collection in FindAllInEditor())
-            {
-                if (collection.GUID == targetGUID)
-                {
-                    result = collection;
-                    return true;
-                }
-            }
-            result = null;
-            return false;
         }
 #endif
 
