@@ -112,25 +112,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
             return null;
         }
 
-        public bool TryGetItemByName(string targetItemName, out ScriptableObject result)
-        {
-            return TryGetItemByName<ScriptableObject>(targetItemName, out result);
-        }
-
-        public bool TryGetItemByName<T>(string targetItemName, out T result) where T : ScriptableObject
-        {
-            var items = Items;
-            for (int i = 0; i < items.Count; i++)
-            {
-                if (items[i] != null && string.Equals(items[i].name, targetItemName, StringComparison.Ordinal) && items[i] is T typed)
-                {
-                    result = typed;
-                    return true;
-                }
-            }
-            result = null;
-            return false;
-        }
     }
 
     public class ScriptableObjectCollection<TObjectType> : ScriptableObjectCollection

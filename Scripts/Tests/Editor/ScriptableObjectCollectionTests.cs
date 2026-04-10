@@ -106,18 +106,6 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             Assert.IsFalse(collection.IsLoaded);
         }
 
-        // --- TryGetItemByName ---
-
-        [Test]
-        public void TryGetItemByName_OnEmptyCollection_ReturnsFalse()
-        {
-            LogAssert.ignoreFailingMessages = true;
-            bool found = collection.TryGetItemByName("Anything", out ScriptableObject result);
-            LogAssert.ignoreFailingMessages = false;
-
-            Assert.IsFalse(found);
-            Assert.IsNull(result);
-        }
 
         // --- FindAll error handling ---
 
