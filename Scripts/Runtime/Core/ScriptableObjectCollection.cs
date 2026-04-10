@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -166,7 +167,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
         }
     }
 
-    public class ScriptableObjectCollection<TObjectType> : ScriptableObjectCollection
+    public class ScriptableObjectCollection<TObjectType> : ScriptableObjectCollection, IEnumerable<TObjectType>
         where TObjectType : ScriptableObject, ISOCItem
     {
         /// <summary>
@@ -178,5 +179,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
         {
             base.Unload();
         }
+        // TODO: clean this mess
+        public IEnumerator<TObjectType> GetEnumerator() => GetLoadedItems().OfType<TObjectType>().GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }
