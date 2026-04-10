@@ -33,6 +33,19 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         public bool IsLoaded => isLoaded;
 
+        public IReadOnlyList<ScriptableObject> Items
+        {
+            get
+            {
+                if (!isLoaded)
+                    LoadSync();
+                return loadedItems;
+            }
+        }
+
+        public int Count => Items.Count;
+        public ScriptableObject this[int index] => Items[index];
+
         public void LoadSync()
         {
             if (isLoaded) return;
@@ -121,29 +134,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
     }
 
     public class ScriptableObjectCollection<TObjectType> : ScriptableObjectCollection
-        where TObjectType : ScriptableObject, ISOCItem
+        where TObjectType : ScriptableObject, ISOCItem, IReadOnlyList<TObjectType>
     {
         [NonSerialized] private ReadOnlyCollection<TObjectType> cachedValues;
-
-        /// <summary>
-        /// All items in this collection, typed. Loads on first access.
-        /// </summary>
-        public ReadOnlyCollection<TObjectType> Values
-        {
-            get
-            {
-                if (cachedValues == null)
-                {
-                    var items = GetLoadedItems();
-                    var typed = new List<TObjectType>(items.Count);
-                    foreach (var t1 in items)
-                        if (t1 is TObjectType t)
-                            typed.Add(t);
-                    cachedValues = typed.AsReadOnly();
-                }
-                return cachedValues;
-            }
-        }
 
         public override void Unload()
         {
