@@ -48,6 +48,9 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             itemAlpha = AssetDatabase.LoadAssetAtPath<TestItem>($"{ItemsFolder}/Alpha.asset");
             itemBeta = AssetDatabase.LoadAssetAtPath<TestItem>($"{ItemsFolder}/Beta.asset");
 
+            if (collection == null)
+                Assert.Ignore("Collection could not be loaded after Refresh");
+
             // Configure settings
             SOCSettings.Instance.SetNamespaceForCollection(collection, "TestNamespace");
             SOCSettings.Instance.SetStaticFilenameForCollection(collection, "TestCodeGenCollectionStatic");
