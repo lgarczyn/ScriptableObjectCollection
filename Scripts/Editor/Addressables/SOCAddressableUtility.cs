@@ -128,24 +128,32 @@ namespace BrunoMikoski.ScriptableObjectCollections
         /// </summary>
         public static ScriptableObjectCollection FindCollectionForItemPath(string itemPath)
         {
-            string folder = Path.GetDirectoryName(itemPath);
+            string folder = Path.GetDirectoryName(itemPath)?.Replace('\\', '/');
 
             while (!string.IsNullOrEmpty(folder) && folder.StartsWith("Assets", StringComparison.Ordinal))
             {
-                string[] collectionGuids = AssetDatabase.FindAssets(
-                    $"t:{nameof(ScriptableObjectCollection)}", new[] { folder });
-
-                foreach (string guid in collectionGuids)
+                // Search all .asset files in this folder and try to load as collection.
+                // We avoid t:ScriptableObjectCollection filter because FindAssets can fail
+                // to index assets whose script name doesn't match the type name.
+                string[] assetGuids = AssetDatabase.FindAssets("", new[] { folder });
+                foreach (string guid in assetGuids)
                 {
-                    string collectionPath = AssetDatabase.GUIDToAssetPath(guid);
-                    // Collection must be in this folder (not a subfolder's subfolder)
-                    if (Path.GetDirectoryName(collectionPath) == folder)
-                    {
-                        return AssetDatabase.LoadAssetAtPath<ScriptableObjectCollection>(collectionPath);
-                    }
+                    string assetPath = AssetDatabase.GUIDToAssetPath(guid);
+
+                    if (!assetPath.EndsWith(".asset", StringComparison.Ordinal))
+                        continue;
+
+                    // Must be directly in this folder, not a subfolder
+                    string assetFolder = Path.GetDirectoryName(assetPath)?.Replace('\\', '/');
+                    if (assetFolder != folder)
+                        continue;
+
+                    var asset = AssetDatabase.LoadAssetAtPath<ScriptableObjectCollection>(assetPath);
+                    if (asset != null)
+                        return asset;
                 }
 
-                folder = Path.GetDirectoryName(folder);
+                folder = Path.GetDirectoryName(folder)?.Replace('\\', '/');
             }
 
             return null;
