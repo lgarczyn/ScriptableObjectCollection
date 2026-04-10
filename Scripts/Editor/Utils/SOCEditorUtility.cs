@@ -42,7 +42,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
             // Ensure the new item is addressable with the collection's label
             if (AddressableAssetSettingsDefaultObject.Settings != null)
             {
-                SOCAddressableUtility.EnsureItemAddressable(uniqueAssetPath, collection.AddressableLabel);
+                string collectionGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(collection));
+                SOCAddressableUtility.EnsureItemAddressable(uniqueAssetPath, $"soc_{collectionGuid}");
             }
 
             return newItem;

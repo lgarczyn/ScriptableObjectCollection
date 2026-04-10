@@ -22,6 +22,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             public ScriptableObjectCollection Collection;
             public string Path;     // e.g. "Assets/Data/Enemies/EnemyCollection.asset"
             public string Folder;   // e.g. "Assets/Data/Enemies/"
+            public string Label;    // e.g. "soc_efca2e5662c01e941923b779e992d1cf"
         }
 
         /// <summary>
@@ -67,11 +68,13 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 if (collection == null)
                     continue;
 
+                string assetGuid = AssetDatabase.AssetPathToGUID(path);
                 CachedCollections.Add(new CollectionInfo
                 {
                     Collection = collection,
                     Path = path,
                     Folder = folder,
+                    Label = $"soc_{assetGuid}",
                 });
             }
         }
@@ -122,7 +125,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                         Type assetType = AssetDatabase.GetMainAssetTypeAtPath(changedPath);
                         if (assetType != null && typeof(ISOCItem).IsAssignableFrom(assetType))
                         {
-                            SOCAddressableUtility.EnsureItemAddressable(changedPath, info.Collection.AddressableLabel);
+                            SOCAddressableUtility.EnsureItemAddressable(changedPath, info.Label);
                         }
                     }
                 }
