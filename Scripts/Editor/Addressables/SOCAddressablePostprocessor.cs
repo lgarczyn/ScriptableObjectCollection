@@ -137,6 +137,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
         }
 
         /// <summary>
+        /// Bake the Unity asset GUID into the m_Guid field of SOC-managed assets.
+        /// </summary>
+        /// <summary>
         /// Find the parent collection for an item path using the cached collection list.
         /// Falls back to a folder walk if cache isn't ready.
         /// </summary>

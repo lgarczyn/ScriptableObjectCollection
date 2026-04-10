@@ -77,7 +77,47 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 }
             }
 
+            // Bake Unity asset GUIDs into m_Guid fields
+            BakeAllGuids();
+
             Debug.Log($"SOC Addressables synced: {count} collections, {registeredCount} registered SOs processed.");
+        }
+
+        /// <summary>
+        /// Bake Unity asset GUIDs into the m_Guid serialized field of all SOC-managed assets.
+        /// Called during SyncAllAddressables (pre-build and manual sync).
+        /// </summary>
+        public static void BakeAllGuids()
+        {
+            string[] allGuids = AssetDatabase.FindAssets("t:ScriptableObject");
+            foreach (string guid in allGuids)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                Type assetType = AssetDatabase.GetMainAssetTypeAtPath(path);
+                if (assetType == null)
+                    continue;
+
+                bool isManaged = typeof(ScriptableObjectCollection).IsAssignableFrom(assetType)
+                              || typeof(ISOCItem).IsAssignableFrom(assetType)
+                              || typeof(IRegisteredSO).IsAssignableFrom(assetType);
+
+                if (!isManaged)
+                    continue;
+
+                var asset = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
+                if (asset == null)
+                    continue;
+
+                var so = new SerializedObject(asset);
+                var guidProp = so.FindProperty("m_Guid");
+                if (guidProp == null || guidProp.stringValue == guid)
+                    continue;
+
+                guidProp.stringValue = guid;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+
+            AssetDatabase.SaveAssets();
         }
 
         /// <summary>

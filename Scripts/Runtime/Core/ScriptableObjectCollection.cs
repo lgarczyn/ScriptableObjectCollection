@@ -11,24 +11,20 @@ namespace BrunoMikoski.ScriptableObjectCollections
     {
         public const string AllCollectionsLabel = "soc_collections";
 
+        [SerializeField, HideInInspector]
+        private string m_Guid;
+
+        /// <summary>
+        /// The Unity asset GUID, baked by the postprocessor.
+        /// Used as the Addressable address for this collection.
+        /// </summary>
+        public string Guid => m_Guid;
+
         /// <summary>
         /// Addressable label applied to all items belonging to this collection.
-        /// Uses the collection's Unity asset GUID for uniqueness.
-        /// Only available in editor (requires AssetDatabase).
+        /// Derived from the baked GUID.
         /// </summary>
-        public string AddressableLabel
-        {
-            get
-            {
-#if UNITY_EDITOR
-                string assetGuid = UnityEditor.AssetDatabase.AssetPathToGUID(
-                    UnityEditor.AssetDatabase.GetAssetPath(this));
-                return $"soc_{assetGuid}";
-#else
-                throw new InvalidOperationException("AddressableLabel is only available in editor.");
-#endif
-            }
-        }
+        public string AddressableLabel => $"soc_{m_Guid}";
 
         [NonSerialized] private List<ScriptableObject> loadedItems;
         [NonSerialized] private AsyncOperationHandle<IList<ScriptableObject>> itemsHandle;

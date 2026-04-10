@@ -11,5 +11,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
     /// </summary>
     public interface IRegisteredSO
     {
+        string Guid { get; }
     }
 }
