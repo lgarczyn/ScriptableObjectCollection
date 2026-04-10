@@ -50,9 +50,39 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 string path = UnityEditor.AssetDatabase.GUIDToAssetPath(assetGuid);
                 var collection = UnityEditor.AssetDatabase.LoadAssetAtPath<ScriptableObjectCollection>(path);
                 if (collection != null)
+                {
+                    EnsureEditorItemsLoaded(collection);
                     result.Add(collection);
+                }
             }
             return result;
+        }
+
+        /// <summary>
+        /// Ensures a collection's Items are populated from its folder in editor.
+        /// Inlined here so the runtime assembly doesn't need to reference the editor assembly.
+        /// </summary>
+        private static void EnsureEditorItemsLoaded(ScriptableObjectCollection collection)
+        {
+            if (collection.Items.Count > 0)
+                return;
+
+            string collectionPath = UnityEditor.AssetDatabase.GetAssetPath(collection);
+            string folder = System.IO.Path.GetDirectoryName(collectionPath);
+            Type itemType = collection.GetItemType();
+            if (itemType == null)
+                return;
+
+            string[] itemGuids = UnityEditor.AssetDatabase.FindAssets($"t:{itemType.Name}", new[] { folder });
+            var items = new List<ScriptableObject>();
+            foreach (string itemGuid in itemGuids)
+            {
+                string itemPath = UnityEditor.AssetDatabase.GUIDToAssetPath(itemGuid);
+                var item = UnityEditor.AssetDatabase.LoadAssetAtPath<ScriptableObject>(itemPath);
+                if (item is ISOCItem)
+                    items.Add(item);
+            }
+            collection.SetEditorItems(items);
         }
 
         public static List<ScriptableObjectCollection> FindByItemTypeInEditor(Type targetItemType)
