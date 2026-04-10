@@ -250,8 +250,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             string destinationFolderAssembly = CompilationPipeline.GetAssemblyNameFromScriptPath(destinationFolder);
 
-            bool canBePartial = baseAssembly.Equals(destinationFolderAssembly, StringComparison.Ordinal) ||
-                                string.IsNullOrEmpty(destinationFolder);
+            bool canBePartial = !string.IsNullOrEmpty(baseAssembly) &&
+                                baseAssembly.Equals(destinationFolderAssembly, StringComparison.Ordinal);
 
             return canBePartial;
         }
@@ -351,10 +351,34 @@ namespace BrunoMikoski.ScriptableObjectCollections
             return true;
         }
 
+        /// <summary>
+        /// Find collection items via AssetDatabase instead of Addressables.
+        /// Avoids MissingReferenceException issues with Addressable handles during code gen.
+        /// </summary>
+        private static List<ScriptableObject> GetItemsForCodeGen(ScriptableObjectCollection collection)
+        {
+            string collectionPath = AssetDatabase.GetAssetPath(collection);
+            string folder = Path.GetDirectoryName(collectionPath);
+            Type itemType = collection.GetItemType();
+            if (itemType == null)
+                return new List<ScriptableObject>();
+
+            string[] guids = AssetDatabase.FindAssets($"t:{itemType.Name}", new[] { folder });
+            var items = new List<ScriptableObject>();
+            foreach (string guid in guids)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                var item = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
+                if (item is ISOCItem)
+                    items.Add(item);
+            }
+            return items;
+        }
+
         private static string[] GetCollectionDirectives(ScriptableObjectCollection collection)
         {
             HashSet<string> directives = new HashSet<string>();
-            var items = collection.Items;
+            var items = GetItemsForCodeGen(collection);
             for (int i = 0; i < items.Count; i++)
                 directives.Add(items[i].GetType().Namespace);
             return directives.ToArray();
@@ -373,8 +397,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
             AppendLine(writer, indentation, $"private static {collection.GetType().FullName} {privateValuesName};");
             AppendLine(writer, indentation);
 
-            // Cached item fields
-            var items = collection.Items;
+            // Cached item fields — use AssetDatabase to find items, not Addressables
+            var items = GetItemsForCodeGen(collection);
             for (int i = 0; i < items.Count; i++)
             {
                 ScriptableObject collectionItem = items[i];
@@ -386,7 +410,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             AppendLine(writer, indentation);
 
             // Values property - loads collection via Addressables on first access
-            string collectionAddress = ScriptableObjectCollection.GetAddressableAddress(collection.GUID);
+            string collectionAddress = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(collection));
             AppendLine(writer, indentation,
                 $"public static {collection.GetType().FullName} {publicValuesName}");
             AppendLine(writer, indentation, "{");

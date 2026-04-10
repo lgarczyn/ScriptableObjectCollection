@@ -12,62 +12,19 @@ namespace BrunoMikoski.ScriptableObjectCollections
         public const string AllCollectionsLabel = "soc_collections";
 
         [SerializeField, HideInInspector]
-        private LongGuid guid;
-        public LongGuid GUID
-        {
-            get
-            {
-#if UNITY_EDITOR
-                if (!guid.IsValid())
-                    GenerateNewGUID();
-#endif
-                return guid;
-            }
-        }
-
-        public string AddressableLabel => $"soc_{GUID.ToBase64String()}";
-        public string AddressableAddress => GetAddressableAddress(GUID);
-
-        public static string GetAddressableAddress(LongGuid collectionGuid)
-        {
-            return $"soc_collection_{collectionGuid.ToBase64String()}";
-        }
-
-        public static ScriptableObjectCollection LoadByGUID(LongGuid collectionGuid)
-        {
-            if (!collectionGuid.IsValid())
-                return null;
-
-            string address = GetAddressableAddress(collectionGuid);
-            var handle = Addressables.LoadAssetAsync<ScriptableObjectCollection>(address);
-            return handle.WaitForCompletion();
-        }
+        private string m_Guid;
 
         /// <summary>
-        /// Load all collections via Addressables using the shared label.
-        /// Works in both editor and runtime.
+        /// The Unity asset GUID, baked by the postprocessor.
+        /// Used as the Addressable address for this collection.
         /// </summary>
-        public static List<ScriptableObjectCollection> FindAll()
-        {
-            var handle = Addressables.LoadAssetsAsync<ScriptableObjectCollection>(AllCollectionsLabel, null);
-            var results = handle.WaitForCompletion();
-            return new List<ScriptableObjectCollection>(results);
-        }
+        public string Guid => m_Guid;
 
         /// <summary>
-        /// Load all collections whose item type matches the given type.
+        /// Addressable label applied to all items belonging to this collection.
+        /// Derived from the baked GUID.
         /// </summary>
-        public static List<ScriptableObjectCollection> FindByItemType(Type targetItemType)
-        {
-            var result = new List<ScriptableObjectCollection>();
-            foreach (var collection in FindAll())
-            {
-                Type itemType = collection.GetItemType();
-                if (itemType != null && itemType.IsAssignableFrom(targetItemType))
-                    result.Add(collection);
-            }
-            return result;
-        }
+        public string AddressableLabel => $"soc_{m_Guid}";
 
         [NonSerialized] private List<ScriptableObject> loadedItems;
         [NonSerialized] private AsyncOperationHandle<IList<ScriptableObject>> itemsHandle;
@@ -117,13 +74,31 @@ namespace BrunoMikoski.ScriptableObjectCollections
             isLoaded = false;
         }
 
-#if UNITY_EDITOR
-        public void GenerateNewGUID()
+        /// <summary>
+        /// Load all collections via Addressables using the shared label.
+        /// Works in both editor and runtime.
+        /// </summary>
+        public static List<ScriptableObjectCollection> FindAll()
         {
-            guid = LongGuid.NewGuid();
-            ObjectUtility.SetDirty(this);
+            var handle = Addressables.LoadAssetsAsync<ScriptableObjectCollection>(AllCollectionsLabel, null);
+            var results = handle.WaitForCompletion();
+            return new List<ScriptableObjectCollection>(results);
         }
-#endif
+
+        /// <summary>
+        /// Load all collections whose item type matches the given type.
+        /// </summary>
+        public static List<ScriptableObjectCollection> FindByItemType(Type targetItemType)
+        {
+            var result = new List<ScriptableObjectCollection>();
+            foreach (var collection in FindAll())
+            {
+                Type itemType = collection.GetItemType();
+                if (itemType != null && itemType.IsAssignableFrom(targetItemType))
+                    result.Add(collection);
+            }
+            return result;
+        }
 
         public virtual Type GetItemType()
         {

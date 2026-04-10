@@ -11,7 +11,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
 {
     /// <summary>
     /// Manages Addressable groups, labels, and entries for SOC assets.
-    /// Inspired by SmartAddresser - automatically maintains Addressable state.
     /// </summary>
     public static class SOCAddressableUtility
     {
@@ -19,7 +18,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
         public const string CollectionsLabel = "soc_collections";
 
         /// <summary>
-        /// Full rescan: find all collections, label all items, update registry metadata.
+        /// Full rescan: find all collections and items, ensure everything is Addressable.
+        /// Used by pre-build and manual sync — not called during normal editing
+        /// (the postprocessor handles incremental updates).
         /// </summary>
         public static void SyncAllAddressables()
         {
@@ -30,7 +31,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 return;
             }
 
-            // Find all collections
             string[] collectionGuids = AssetDatabase.FindAssets($"t:{nameof(ScriptableObjectCollection)}");
             int count = 0;
 
@@ -41,19 +41,87 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 if (collection == null)
                     continue;
 
-                // Ensure collection itself is addressable
                 EnsureCollectionAddressable(collection, path);
 
                 // Label all items in the collection's folder
-                RelabelCollectionItems(collection);
+                string folder = Path.GetDirectoryName(path);
+                Type itemType = collection.GetItemType();
+                if (itemType != null)
+                {
+                    string label = collection.AddressableLabel;
+                    string[] itemGuids = AssetDatabase.FindAssets($"t:{itemType.Name}", new[] { folder });
+                    foreach (string itemGuid in itemGuids)
+                    {
+                        string itemPath = AssetDatabase.GUIDToAssetPath(itemGuid);
+                        // Verify it's actually an ISOCItem without loading the full asset
+                        Type itemAssetType = AssetDatabase.GetMainAssetTypeAtPath(itemPath);
+                        if (itemAssetType != null && typeof(ISOCItem).IsAssignableFrom(itemAssetType))
+                            EnsureItemAddressable(itemPath, label);
+                    }
+                }
+
                 count++;
             }
 
-            Debug.Log($"SOC Addressables synced: {count} collections processed.");
+            // Label all IRegisteredSO assets
+            string[] registeredGuids = AssetDatabase.FindAssets($"t:{nameof(ScriptableObject)}");
+            int registeredCount = 0;
+            foreach (string registeredGuid in registeredGuids)
+            {
+                string registeredPath = AssetDatabase.GUIDToAssetPath(registeredGuid);
+                Type registeredType = AssetDatabase.GetMainAssetTypeAtPath(registeredPath);
+                if (registeredType != null && typeof(IRegisteredSO).IsAssignableFrom(registeredType))
+                {
+                    EnsureItemAddressable(registeredPath, SORegistry.RegisteredLabel);
+                    registeredCount++;
+                }
+            }
+
+            // Bake Unity asset GUIDs into m_Guid fields
+            BakeAllGuids();
+
+            Debug.Log($"SOC Addressables synced: {count} collections, {registeredCount} registered SOs processed.");
         }
 
         /// <summary>
-        /// Ensure a collection asset is addressable with a stable address.
+        /// Bake Unity asset GUIDs into the m_Guid serialized field of all SOC-managed assets.
+        /// Called during SyncAllAddressables (pre-build and manual sync).
+        /// </summary>
+        public static void BakeAllGuids()
+        {
+            string[] allGuids = AssetDatabase.FindAssets("t:ScriptableObject");
+            foreach (string guid in allGuids)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                Type assetType = AssetDatabase.GetMainAssetTypeAtPath(path);
+                if (assetType == null)
+                    continue;
+
+                bool isManaged = typeof(ScriptableObjectCollection).IsAssignableFrom(assetType)
+                              || typeof(ISOCItem).IsAssignableFrom(assetType)
+                              || typeof(IRegisteredSO).IsAssignableFrom(assetType);
+
+                if (!isManaged)
+                    continue;
+
+                var asset = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
+                if (asset == null)
+                    continue;
+
+                var so = new SerializedObject(asset);
+                var guidProp = so.FindProperty("m_Guid");
+                if (guidProp == null || guidProp.stringValue == guid)
+                    continue;
+
+                guidProp.stringValue = guid;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+
+            AssetDatabase.SaveAssets();
+        }
+
+        /// <summary>
+        /// Ensure a collection asset is addressable with a stable address and the shared label.
         /// </summary>
         public static void EnsureCollectionAddressable(ScriptableObjectCollection collection, string assetPath)
         {
@@ -65,7 +133,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             var group = GetOrCreateSOCGroup(settings);
             var entry = settings.CreateOrMoveEntry(assetGuid, group, readOnly: false);
-            entry.address = GetCollectionAddress(collection);
+            entry.address = assetGuid; // Use Unity asset GUID as address, same as items
 
             settings.AddLabel(CollectionsLabel);
             if (!entry.labels.Contains(CollectionsLabel))
@@ -85,46 +153,17 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             var group = GetOrCreateSOCGroup(settings);
             var entry = settings.CreateOrMoveEntry(assetGuid, group, readOnly: false);
-            entry.address = assetGuid; // Use Unity GUID as address for stability
+            entry.address = assetGuid;
 
-            // Ensure label exists and is applied
             settings.AddLabel(collectionLabel);
             if (!entry.labels.Contains(collectionLabel))
                 entry.labels.Add(collectionLabel);
         }
 
         /// <summary>
-        /// Re-label all items in a collection's folder with the collection's Addressable label.
-        /// </summary>
-        public static void RelabelCollectionItems(ScriptableObjectCollection collection)
-        {
-            string collectionPath = AssetDatabase.GetAssetPath(collection);
-            string folder = Path.GetDirectoryName(collectionPath);
-
-            Type itemType = collection.GetItemType();
-            if (itemType == null) return;
-
-            string[] guids = AssetDatabase.FindAssets($"t:{itemType.Name}", new[] { folder });
-            var items = new List<ScriptableObject>();
-            foreach (string guid in guids)
-            {
-                string path = AssetDatabase.GUIDToAssetPath(guid);
-                var item = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
-                if (item is ISOCItem)
-                    items.Add(item);
-            }
-
-            string label = collection.AddressableLabel;
-
-            foreach (var item in items)
-            {
-                string itemPath = AssetDatabase.GetAssetPath(item);
-                EnsureItemAddressable(itemPath, label);
-            }
-        }
-
-        /// <summary>
         /// Find the parent collection for an item by walking up the folder tree.
+        /// Loads .asset files and checks if they're collections — used as fallback
+        /// when the postprocessor cache isn't available.
         /// </summary>
         public static ScriptableObjectCollection FindCollectionForItemPath(string itemPath)
         {
@@ -132,9 +171,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             while (!string.IsNullOrEmpty(folder) && folder.StartsWith("Assets", StringComparison.Ordinal))
             {
-                // Search all .asset files in this folder and try to load as collection.
-                // We avoid t:ScriptableObjectCollection filter because FindAssets can fail
-                // to index assets whose script name doesn't match the type name.
                 string[] assetGuids = AssetDatabase.FindAssets("", new[] { folder });
                 foreach (string guid in assetGuids)
                 {
@@ -143,7 +179,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
                     if (!assetPath.EndsWith(".asset", StringComparison.Ordinal))
                         continue;
 
-                    // Must be directly in this folder, not a subfolder
                     string assetFolder = Path.GetDirectoryName(assetPath)?.Replace('\\', '/');
                     if (assetFolder != folder)
                         continue;
@@ -157,11 +192,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
             }
 
             return null;
-        }
-
-        public static string GetCollectionAddress(ScriptableObjectCollection collection)
-        {
-            return $"soc_collection_{collection.GUID.ToBase64String()}";
         }
 
         public static AddressableAssetGroup GetOrCreateSOCGroup(AddressableAssetSettings settings)

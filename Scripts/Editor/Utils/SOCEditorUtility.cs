@@ -43,7 +43,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (AddressableAssetSettingsDefaultObject.Settings != null)
             {
                 SOCAddressableUtility.EnsureItemAddressable(uniqueAssetPath, collection.AddressableLabel);
-                SOCAddressableUtility.SyncAllAddressables();
             }
 
             return newItem;
@@ -71,18 +70,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (!newName.EndsWith(".asset"))
                 newName += ".asset";
             AssetDatabase.RenameAsset(path, newName);
-        }
-
-        /// <summary>
-        /// Find an existing item by name, or create a new one if not found.
-        /// Used by the generator system.
-        /// </summary>
-        public static ISOCItem GetOrAddNewItem(ScriptableObjectCollection collection, Type itemType, string targetName)
-        {
-            if (collection.TryGetItemByName(targetName, out ScriptableObject existing))
-                return existing as ISOCItem;
-
-            return AddNewItem(collection, itemType, targetName) as ISOCItem;
         }
 
         /// <summary>

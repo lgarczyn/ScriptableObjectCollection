@@ -51,7 +51,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             // Find the current collection from the item's folder
             string itemPath = AssetDatabase.GetAssetPath(items[0] as Object);
-            ScriptableObjectCollection currentCollection = SOCAddressableUtility.FindCollectionForItemPath(itemPath);
+            ScriptableObjectCollection currentCollection = SOCAddressablePostprocessor.FindCollectionForItemPath(itemPath);
 
             List<ScriptableObjectCollection> filteredCollections = new List<ScriptableObjectCollection>();
             foreach (ScriptableObjectCollection collection in possibleCollections)
@@ -66,7 +66,16 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 return;
             }
 
-            MoveToCollectionWindow.ShowWindow(items, filteredCollections);
+            GenericMenu menu = new GenericMenu();
+            foreach (ScriptableObjectCollection targetCollection in filteredCollections)
+            {
+                menu.AddItem(new GUIContent(targetCollection.name), false, () =>
+                {
+                    foreach (ISOCItem item in items)
+                        SOCItemUtility.MoveItem(item, targetCollection);
+                });
+            }
+            menu.ShowAsContext();
         }
 
 
@@ -79,7 +88,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (selectedObjects[0] is not ISOCItem)
                 return false;
             string itemPath = AssetDatabase.GetAssetPath(selectedObjects[0]);
-            return SOCAddressableUtility.FindCollectionForItemPath(itemPath) != null;
+            return SOCAddressablePostprocessor.FindCollectionForItemPath(itemPath) != null;
         }
 
         [MenuItem("Assets/Select Collection", priority = 10000)]
@@ -91,7 +100,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (selectedObjects[0] is not ISOCItem)
                 return;
             string itemPath = AssetDatabase.GetAssetPath(selectedObjects[0]);
-            ScriptableObjectCollection collection = SOCAddressableUtility.FindCollectionForItemPath(itemPath);
+            ScriptableObjectCollection collection = SOCAddressablePostprocessor.FindCollectionForItemPath(itemPath);
             if (collection != null)
                 Selection.activeObject = collection;
         }

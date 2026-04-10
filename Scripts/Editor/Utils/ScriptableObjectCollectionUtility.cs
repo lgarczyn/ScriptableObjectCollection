@@ -34,7 +34,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
         public static void GoToItem(ISOCItem socItem)
         {
             string itemPath = AssetDatabase.GetAssetPath(socItem as ScriptableObject);
-            ScriptableObjectCollection collection = SOCAddressableUtility.FindCollectionForItemPath(itemPath);
+            ScriptableObjectCollection collection = SOCAddressablePostprocessor.FindCollectionForItemPath(itemPath);
             if (collection == null)
                 return;
 
