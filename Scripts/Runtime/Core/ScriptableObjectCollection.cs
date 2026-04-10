@@ -154,6 +154,41 @@ namespace BrunoMikoski.ScriptableObjectCollections
             cacheClearActions.Clear();
         }
 
+        /// <summary>
+        /// Find an item by its baked asset GUID across this collection's loaded items.
+        /// </summary>
+        public bool TryGetItemByGUID<T>(string guid, out T result) where T : ScriptableObject, ISOCItem
+        {
+            var items = GetLoadedItems();
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (items[i] is T typed && typed is ISOCItem socItem && socItem.Guid == guid)
+                {
+                    result = typed;
+                    return true;
+                }
+            }
+            result = null;
+            return false;
+        }
+
+        /// <summary>
+        /// Find a collection by its baked asset GUID.
+        /// </summary>
+        public static bool TryGetCollectionByGUID(string guid, out ScriptableObjectCollection result)
+        {
+            foreach (var collection in FindAll())
+            {
+                if (collection.Guid == guid)
+                {
+                    result = collection;
+                    return true;
+                }
+            }
+            result = null;
+            return false;
+        }
+
         public virtual Type GetItemType()
         {
             Type baseType = GetType().BaseType;

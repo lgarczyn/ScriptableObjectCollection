@@ -71,7 +71,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 Type registeredType = AssetDatabase.GetMainAssetTypeAtPath(registeredPath);
                 if (registeredType != null && typeof(IRegisteredSO).IsAssignableFrom(registeredType))
                 {
-                    EnsureItemAddressable(registeredPath, SORegistry.RegisteredLabel);
+                    EnsureItemAddressable(registeredPath, ScriptableObjectRegistry.RegisteredLabel);
                     registeredCount++;
                 }
             }

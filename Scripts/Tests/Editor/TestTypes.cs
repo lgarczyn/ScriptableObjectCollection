@@ -24,7 +24,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
     }
 
     /// <summary>
-    /// A ScriptableObject implementing IRegisteredSO for testing the SORegistry.
+    /// A ScriptableObject implementing IRegisteredSO for testing the ScriptableObjectRegistry.
     /// </summary>
     public class TestRegisteredItem : ScriptableObject, IRegisteredSO
     {

@@ -154,7 +154,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 Type assetType = AssetDatabase.GetMainAssetTypeAtPath(changedPath);
                 if (assetType != null && typeof(IRegisteredSO).IsAssignableFrom(assetType))
                 {
-                    SOCAddressableUtility.EnsureItemAddressable(changedPath, SORegistry.RegisteredLabel);
+                    SOCAddressableUtility.EnsureItemAddressable(changedPath, ScriptableObjectRegistry.RegisteredLabel);
                 }
             }
         }
