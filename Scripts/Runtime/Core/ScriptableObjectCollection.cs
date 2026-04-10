@@ -120,28 +120,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
         /// Get all items of a given type across ALL collections.
         /// Results are cached; call ClearCache() or Unload collections to invalidate.
         /// </summary>
-        public static IReadOnlyList<T> Values<T>() where T : ScriptableObject, ISOCItem
-        {
-            if (Cache<T>.values != null)
-                return Cache<T>.values;
-
-            var result = new List<T>();
-            foreach (var collection in FindByItemType(typeof(T)))
-            {
-                var items = collection.GetLoadedItems();
-                for (int i = 0; i < items.Count; i++)
-                    if (items[i] is T typed)
-                        result.Add(typed);
-            }
-            Cache<T>.values = result;
-            RegisterCacheClear<T>();
-            return result;
-        }
-
-        /// <summary>
-        /// Get all items of a given type across ALL collections.
-        /// Results are cached; call ClearCache() or Unload collections to invalidate.
-        /// </summary>
         public static IReadOnlyList<T> OfType<T>() where T : ScriptableObject
         {
             if (Cache<T>.ofType != null)
@@ -191,6 +169,11 @@ namespace BrunoMikoski.ScriptableObjectCollections
     public class ScriptableObjectCollection<TObjectType> : ScriptableObjectCollection
         where TObjectType : ScriptableObject, ISOCItem
     {
+        /// <summary>
+        /// All items of this collection's type across all collections. Cached.
+        /// </summary>
+        public static IReadOnlyList<TObjectType> Values => OfType<TObjectType>();
+
         public override void Unload()
         {
             base.Unload();
