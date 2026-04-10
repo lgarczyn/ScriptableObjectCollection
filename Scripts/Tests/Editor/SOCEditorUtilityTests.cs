@@ -2,6 +2,7 @@ using System.IO;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace BrunoMikoski.ScriptableObjectCollections.Tests
 {
@@ -26,6 +27,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             collection.GenerateNewGUID();
             AssetDatabase.CreateAsset(collection, $"{TestFolder}/TestCollection.asset");
             AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
         }
 
         [TearDown]
@@ -81,7 +83,10 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
         [Test]
         public void GetOrAddNewItem_CreatesNewIfNotFound()
         {
+            // Collection isn't fully Addressable in tests, so LoadSync logs an error
+            LogAssert.ignoreFailingMessages = true;
             ISOCItem created = SOCEditorUtility.GetOrAddNewItem(collection, typeof(TestItem), "BrandNew");
+            LogAssert.ignoreFailingMessages = false;
 
             Assert.IsNotNull(created);
             Assert.AreEqual("BrandNew", created.name);
@@ -93,6 +98,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             var item = ScriptableObject.CreateInstance<TestItem>();
             AssetDatabase.CreateAsset(item, $"{ItemsFolder}/FindMe.asset");
             AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
 
             ScriptableObjectCollection found = SOCAddressableUtility.FindCollectionForItemPath($"{ItemsFolder}/FindMe.asset");
 

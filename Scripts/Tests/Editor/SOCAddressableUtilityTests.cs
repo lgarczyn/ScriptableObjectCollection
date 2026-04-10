@@ -73,12 +73,14 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             var collection = ScriptableObject.CreateInstance<TestCollection>();
             collection.GenerateNewGUID();
             AssetDatabase.CreateAsset(collection, $"{TestFolder}/ParentCollection.asset");
+            AssetDatabase.SaveAssets();
 
             // Create item in Items subfolder
             AssetDatabaseUtils.CreatePathIfDoesntExist($"{TestFolder}/Items");
             var item = ScriptableObject.CreateInstance<TestItem>();
             AssetDatabase.CreateAsset(item, $"{TestFolder}/Items/ChildItem.asset");
             AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
 
             var found = SOCAddressableUtility.FindCollectionForItemPath($"{TestFolder}/Items/ChildItem.asset");
             Assert.IsNotNull(found);
