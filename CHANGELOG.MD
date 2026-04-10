@@ -14,11 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Removed Syncronize Button (was not needed anymore)
  - Fixed generator not refreshing CollectionEditor after running the generator
  - Fixed unique name generation for new items
- - 
 
 ## Added
  - Added new label options to make the picker smaller
- - 
 
 ## [2.4.0] - 24/05/2025
 ## Changed
