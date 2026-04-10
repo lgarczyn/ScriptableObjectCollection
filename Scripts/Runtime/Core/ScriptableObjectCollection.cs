@@ -102,8 +102,19 @@ namespace BrunoMikoski.ScriptableObjectCollections
             return result;
         }
 
-        private static readonly Dictionary<Type, object> valuesCache = new();
-        private static readonly Dictionary<Type, object> ofTypeCache = new();
+        private static class Cache<T> where T : ScriptableObject
+        {
+            public static List<T> values;
+            public static List<T> ofType;
+
+            public static void Clear()
+            {
+                values = null;
+                ofType = null;
+            }
+        }
+
+        private static readonly List<Action> cacheClearActions = new();
 
         /// <summary>
         /// Get all items of a given type across ALL collections.
@@ -111,8 +122,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
         /// </summary>
         public static IReadOnlyList<T> Values<T>() where T : ScriptableObject, ISOCItem
         {
-            if (valuesCache.TryGetValue(typeof(T), out object cached))
-                return (List<T>)cached;
+            if (Cache<T>.values != null)
+                return Cache<T>.values;
 
             var result = new List<T>();
             foreach (var collection in FindByItemType(typeof(T)))
@@ -122,7 +133,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
                     if (items[i] is T typed)
                         result.Add(typed);
             }
-            valuesCache[typeof(T)] = result;
+            Cache<T>.values = result;
+            RegisterCacheClear<T>();
             return result;
         }
 
@@ -132,8 +144,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
         /// </summary>
         public static IReadOnlyList<T> OfType<T>() where T : ScriptableObject
         {
-            if (ofTypeCache.TryGetValue(typeof(T), out object cached))
-                return (List<T>)cached;
+            if (Cache<T>.ofType != null)
+                return Cache<T>.ofType;
 
             var result = new List<T>();
             foreach (var collection in FindAll())
@@ -143,8 +155,14 @@ namespace BrunoMikoski.ScriptableObjectCollections
                     if (items[i] is T typed)
                         result.Add(typed);
             }
-            ofTypeCache[typeof(T)] = result;
+            Cache<T>.ofType = result;
+            RegisterCacheClear<T>();
             return result;
+        }
+
+        private static void RegisterCacheClear<T>() where T : ScriptableObject
+        {
+            cacheClearActions.Add(Cache<T>.Clear);
         }
 
         /// <summary>
@@ -152,8 +170,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
         /// </summary>
         public static void ClearCache()
         {
-            valuesCache.Clear();
-            ofTypeCache.Clear();
+            for (int i = 0; i < cacheClearActions.Count; i++)
+                cacheClearActions[i]();
+            cacheClearActions.Clear();
         }
 
         public virtual Type GetItemType()
