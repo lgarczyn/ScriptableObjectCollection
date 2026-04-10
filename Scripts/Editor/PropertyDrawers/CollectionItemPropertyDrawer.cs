@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
+using UnityEditor.AddressableAssets.Settings;
 using UnityEditor.IMGUI.Controls;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
@@ -10,25 +11,28 @@ using Object = UnityEngine.Object;
 
 namespace BrunoMikoski.ScriptableObjectCollections
 {
-    [CustomPropertyDrawer(typeof(ISOCItem),                                        true)]
-    [CustomPropertyDrawer(typeof(ScriptableObjectCollectionItem),                  true)]
-    [CustomPropertyDrawer(typeof(AssetReferenceT<ScriptableObjectCollectionItem>), true)]
+    [CustomPropertyDrawer(typeof(ISOCItem),                       true)]
+    [CustomPropertyDrawer(typeof(ScriptableObjectCollectionItem), true)]
+    [CustomPropertyDrawer(typeof(AssetReferenceT<>),              true)]
     public class CollectionItemPropertyDrawer : PropertyDrawer
     {
         private const float BUTTON_WIDTH = 30;
+        private const string ASSET_GUID_PROPERTY = "m_AssetGUID";
 
         private static readonly SOCItemEditorOptionsAttribute DefaultAttribute = new();
 
         internal SOCItemEditorOptionsAttribute OptionsAttribute { get; private set; }
 
         private bool initialized;
+        private bool isAssetReference;
+        private bool isSOCAssetReference;
 
         private Object currentObject;
 
         private CollectionItemDropdown collectionItemDropdown;
         private ScriptableObject item;
         private float totalHeight;
-        
+
         private bool showingItemPreview;
 
         private FieldInfo overrideFieldInfo;
@@ -58,11 +62,33 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
+            DetectAssetReference();
+
+            // AssetReferenceT<NonSOCItem> — delegate to Addressables drawer
+            if (isAssetReference && !isSOCAssetReference)
+            {
+                PropertyDrawer fallback = GetOrCreateAssetReferenceDrawer();
+                return fallback != null
+                    ? fallback.GetPropertyHeight(property, label)
+                    : EditorGUIUtility.singleLineHeight;
+            }
+
             return EditorGUIUtility.singleLineHeight * 2 + EditorGUIUtility.standardVerticalSpacing;
         }
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
+            DetectAssetReference();
+
+            // AssetReferenceT<NonSOCItem> — delegate to Addressables drawer
+            if (isAssetReference && !isSOCAssetReference)
+            {
+                PropertyDrawer fallback = GetOrCreateAssetReferenceDrawer();
+                if (fallback != null)
+                    fallback.OnGUI(position, property, label);
+                return;
+            }
+
             Initialize(property);
 
             if (OptionsAttribute.DrawType == DrawType.AsReference)
@@ -71,17 +97,104 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 return;
             }
 
-            item = property.objectReferenceValue as ScriptableObject;
+            if (isAssetReference)
+            {
+                // AssetReferenceT<ISOCItem> — resolve GUID and draw SOC dropdown
+                SerializedProperty guidProp = property.FindPropertyRelative(ASSET_GUID_PROPERTY);
+                string currentGuid = guidProp?.stringValue;
+                ScriptableObject currentItem = null;
 
-            EditorGUI.BeginProperty(position, label, property);
-
-            DrawCollectionItemDrawer(ref position, property, item, label,
-                newItem =>
+                if (!string.IsNullOrEmpty(currentGuid))
                 {
-                    property.objectReferenceValue = newItem;
-                    property.serializedObject.ApplyModifiedProperties();
-                });
-            EditorGUI.EndProperty();
+                    string path = AssetDatabase.GUIDToAssetPath(currentGuid);
+                    if (!string.IsNullOrEmpty(path))
+                        currentItem = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
+                }
+
+                EditorGUI.BeginProperty(position, label, property);
+                DrawCollectionItemDrawer(ref position, property, currentItem, label,
+                    newItem =>
+                    {
+                        if (guidProp == null) return;
+                        guidProp.stringValue = newItem == null
+                            ? ""
+                            : AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(newItem));
+                        property.serializedObject.ApplyModifiedProperties();
+                    });
+                EditorGUI.EndProperty();
+            }
+            else
+            {
+                // Direct ScriptableObject reference
+                item = property.objectReferenceValue as ScriptableObject;
+
+                EditorGUI.BeginProperty(position, label, property);
+                DrawCollectionItemDrawer(ref position, property, item, label,
+                    newItem =>
+                    {
+                        property.objectReferenceValue = newItem;
+                        property.serializedObject.ApplyModifiedProperties();
+                    });
+                EditorGUI.EndProperty();
+            }
+        }
+
+        /// <summary>
+        /// Detect once whether this field is an AssetReferenceT and whether T is ISOCItem.
+        /// </summary>
+        private void DetectAssetReference()
+        {
+            if (isAssetReference || isSOCAssetReference)
+                return;
+
+            Type fieldType = TargetFieldInfo?.FieldType;
+            if (fieldType == null)
+                return;
+
+            Type assetRefTargetType = GetAssetReferenceTargetType(fieldType);
+            if (assetRefTargetType != null)
+            {
+                isAssetReference = true;
+                isSOCAssetReference = typeof(ISOCItem).IsAssignableFrom(assetRefTargetType);
+            }
+        }
+
+        private static Type GetAssetReferenceTargetType(Type fieldType)
+        {
+            Type current = fieldType;
+            while (current != null)
+            {
+                if (current.IsGenericType && current.GetGenericTypeDefinition() == typeof(AssetReferenceT<>))
+                    return current.GetGenericArguments()[0];
+                current = current.BaseType;
+            }
+            return null;
+        }
+
+        private PropertyDrawer assetReferenceDrawer;
+
+        /// <summary>
+        /// Creates and caches an instance of the internal AssetReferenceDrawer via reflection,
+        /// with m_FieldInfo set so it works correctly.
+        /// </summary>
+        private PropertyDrawer GetOrCreateAssetReferenceDrawer()
+        {
+            if (assetReferenceDrawer != null)
+                return assetReferenceDrawer;
+
+            Type drawerType = typeof(AddressableAssetSettings).Assembly
+                .GetType("UnityEditor.AddressableAssets.GUI.AssetReferenceDrawer");
+            if (drawerType == null)
+                return null;
+
+            assetReferenceDrawer = (PropertyDrawer)Activator.CreateInstance(drawerType);
+
+            // PropertyDrawer.fieldInfo is backed by internal m_FieldInfo — set it via reflection
+            FieldInfo fieldInfoField = typeof(PropertyDrawer).GetField("m_FieldInfo",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            fieldInfoField?.SetValue(assetReferenceDrawer, TargetFieldInfo);
+
+            return assetReferenceDrawer;
         }
 
         internal void DrawCollectionItemDrawer(
@@ -175,6 +288,14 @@ namespace BrunoMikoski.ScriptableObjectCollections
             {
                 Type arrayOrListType = TargetFieldInfo.FieldType.GetArrayOrListType();
                 itemType = arrayOrListType ?? TargetFieldInfo.FieldType;
+            }
+
+            // If this is an AssetReferenceT<T>, unwrap to get T
+            if (isAssetReference)
+            {
+                Type assetRefTarget = GetAssetReferenceTargetType(itemType);
+                if (assetRefTarget != null)
+                    itemType = assetRefTarget;
             }
 
             Initialize(itemType, property, GetOptionsAttribute());
