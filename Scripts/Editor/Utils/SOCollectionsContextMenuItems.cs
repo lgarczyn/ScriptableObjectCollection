@@ -66,7 +66,16 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 return;
             }
 
-            MoveToCollectionWindow.ShowWindow(items, filteredCollections);
+            GenericMenu menu = new GenericMenu();
+            foreach (ScriptableObjectCollection targetCollection in filteredCollections)
+            {
+                menu.AddItem(new GUIContent(targetCollection.name), false, () =>
+                {
+                    foreach (ISOCItem item in items)
+                        SOCItemUtility.MoveItem(item, targetCollection);
+                });
+            }
+            menu.ShowAsContext();
         }
 
 
