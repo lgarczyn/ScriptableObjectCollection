@@ -155,21 +155,18 @@ namespace BrunoMikoski.ScriptableObjectCollections
         }
 
         /// <summary>
-        /// Find an item by its baked asset GUID across this collection's loaded items.
+        /// Load an item by its asset GUID via Addressables.
         /// </summary>
-        public bool TryGetItemByGUID<T>(string guid, out T result) where T : ScriptableObject, ISOCItem
+        public static bool TryGetItemByGUID<T>(string guid, out T result) where T : ScriptableObject, ISOCItem
         {
-            var items = GetLoadedItems();
-            for (int i = 0; i < items.Count; i++)
+            if (string.IsNullOrEmpty(guid))
             {
-                if (items[i] is T typed && typed is ISOCItem socItem && socItem.Guid == guid)
-                {
-                    result = typed;
-                    return true;
-                }
+                result = null;
+                return false;
             }
-            result = null;
-            return false;
+
+            result = Addressables.LoadAssetAsync<T>(guid).WaitForCompletion();
+            return result != null;
         }
 
         /// <summary>

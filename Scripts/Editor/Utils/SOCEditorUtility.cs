@@ -74,6 +74,22 @@ namespace BrunoMikoski.ScriptableObjectCollections
         }
 
         /// <summary>
+        /// Get an existing item by name, or create a new one if not found.
+        /// </summary>
+        public static T GetOrAddNewItem<T>(ScriptableObjectCollection collection, string itemName)
+            where T : ScriptableObject, ISOCItem
+        {
+            var items = collection.GetLoadedItems();
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (items[i] is T typed && string.Equals(typed.name, itemName, StringComparison.Ordinal))
+                    return typed;
+            }
+
+            return AddNewItem(collection, typeof(T), itemName) as T;
+        }
+
+        /// <summary>
         /// Move an item to a different collection's folder.
         /// </summary>
         public static void MoveItemToCollection(ISOCItem item, ScriptableObjectCollection targetCollection)
