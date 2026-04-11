@@ -119,33 +119,38 @@ namespace BrunoMikoski.ScriptableObjectCollections
             // Bake asset GUIDs into m_Guid fields
             BakeGuids(changedPaths);
 
-            // Process each collection that has changed assets in its folder
+            // Build set of all known collection GUIDs for stale label detection
+            var allCollectionGuids = new HashSet<string>();
+            foreach (CollectionInfo info in CachedCollections)
+                if (info.Collection)
+                    allCollectionGuids.Add(info.Label);
+
+            // Ensure changed collections themselves are addressable
             foreach (CollectionInfo info in CachedCollections)
             {
-                if (!info.Collection)
+                if (info.Collection && changedPaths.Contains(info.Path))
+                    SOCAddressableUtility.EnsureCollectionAddressable(info.Collection, info.Path);
+            }
+
+            // For each changed item, compute ALL parent collection labels, then reconcile
+            foreach (string changedPath in changedPaths)
+            {
+                Type assetType = AssetDatabase.GetMainAssetTypeAtPath(changedPath);
+                if (assetType == null || !typeof(ISOCItem).IsAssignableFrom(assetType))
                     continue;
 
-                bool collectionItselfChanged = changedPaths.Contains(info.Path);
-                if (collectionItselfChanged)
+                var correctLabels = new HashSet<string>();
+                foreach (CollectionInfo info in CachedCollections)
                 {
-                    SOCAddressableUtility.EnsureCollectionAddressable(info.Collection, info.Path);
-                }
-
-                // Check if any changed asset is inside this collection's folder
-                foreach (string changedPath in changedPaths)
-                {
+                    if (!info.Collection)
+                        continue;
                     if (changedPath == info.Path)
                         continue;
-
                     if (changedPath.StartsWith(info.Folder, StringComparison.Ordinal))
-                    {
-                        Type assetType = AssetDatabase.GetMainAssetTypeAtPath(changedPath);
-                        if (assetType != null && typeof(ISOCItem).IsAssignableFrom(assetType))
-                        {
-                            SOCAddressableUtility.EnsureItemAddressable(changedPath, info.Label);
-                        }
-                    }
+                        correctLabels.Add(info.Label);
                 }
+
+                SOCAddressableUtility.ReconcileItemLabels(changedPath, correctLabels, allCollectionGuids);
             }
 
             // Auto-label IRegisteredSO assets

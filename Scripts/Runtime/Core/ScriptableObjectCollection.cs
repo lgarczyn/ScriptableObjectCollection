@@ -119,6 +119,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         /// <summary>
         /// Get all items of a given type across ALL collections.
+        /// Items belonging to multiple collections are included only once.
         /// Results are cached; call ClearCache() or Unload collections to invalidate.
         /// </summary>
         public static IReadOnlyList<T> OfType<T>() where T : ScriptableObject
@@ -127,11 +128,12 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 return Cache<T>.ofType;
 
             var result = new List<T>();
+            var seen = new HashSet<T>();
             foreach (var collection in FindAll())
             {
                 var items = collection.GetLoadedItems();
                 for (int i = 0; i < items.Count; i++)
-                    if (items[i] is T typed)
+                    if (items[i] is T typed && seen.Add(typed))
                         result.Add(typed);
             }
             Cache<T>.ofType = result;
