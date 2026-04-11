@@ -16,20 +16,20 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
         [Test]
         public void Load_WithNullGuid_ReturnsNull()
         {
-            Assert.IsNull(ScriptableObjectRegistry.Load<ScriptableObject>(null));
+            Assert.IsNull(ScriptableObjectRegistry.Load<TestRegisteredItem>(null));
         }
 
         [Test]
         public void Load_WithEmptyGuid_ReturnsNull()
         {
-            Assert.IsNull(ScriptableObjectRegistry.Load<ScriptableObject>(""));
+            Assert.IsNull(ScriptableObjectRegistry.Load<TestRegisteredItem>(""));
         }
 
         [Test]
         public void Load_WithInvalidGuid_ReturnsNull()
         {
             LogAssert.ignoreFailingMessages = true;
-            var result = ScriptableObjectRegistry.Load<ScriptableObject>("nonexistent-guid");
+            var result = ScriptableObjectRegistry.Load<TestRegisteredItem>("nonexistent-guid");
             LogAssert.ignoreFailingMessages = false;
 
             Assert.IsNull(result);
