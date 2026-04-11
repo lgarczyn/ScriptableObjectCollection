@@ -14,7 +14,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
         /// <summary>
         /// Load a ScriptableObject by its asset GUID (Addressable address).
         /// </summary>
-        public static T Load<T>(string guid) where T : ScriptableObject
+        public static T Load<T>(string guid) where T : class, IRegisteredSO
         {
             if (string.IsNullOrEmpty(guid))
                 return null;
@@ -26,7 +26,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
         /// Try to find a registered item by its baked asset GUID.
         /// Loads the item via Addressables.
         /// </summary>
-        public static bool TryGetItemByGUID<T>(string guid, out T result) where T : ScriptableObject, IRegisteredSO
+        public static bool TryGetItemByGUID<T>(string guid, out T result) where T : class, IRegisteredSO
         {
             if (string.IsNullOrEmpty(guid))
             {

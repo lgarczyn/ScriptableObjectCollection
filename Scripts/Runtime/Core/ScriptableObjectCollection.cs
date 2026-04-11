@@ -157,7 +157,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
         /// <summary>
         /// Load an item by its asset GUID via Addressables.
         /// </summary>
-        public static bool TryGetItemByGUID<T>(string guid, out T result) where T : ScriptableObject, ISOCItem
+        public static bool TryGetItemByGUID<T>(string guid, out T result) where T : class, ISOCItem
         {
             if (string.IsNullOrEmpty(guid))
             {
