@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.AddressableAssets;
 using UnityEditor.AddressableAssets.Settings;
@@ -30,8 +32,10 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 return;
             }
 
+            // Build collection info list
             string[] collectionGuids = AssetDatabase.FindAssets($"t:{nameof(ScriptableObjectCollection)}");
-            int count = 0;
+            var allCollectionGuids = new HashSet<string>(collectionGuids);
+            var collections = new List<(ScriptableObjectCollection collection, string path, string folder, string guid)>();
 
             foreach (string assetGuid in collectionGuids)
             {
@@ -42,25 +46,42 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
                 EnsureCollectionAddressable(collection, path);
 
-                // Label all items in the collection's folder
-                string folder = Path.GetDirectoryName(path);
-                Type itemType = collection.GetItemType();
-                if (itemType != null)
-                {
-                    string label = AssetDatabase.AssetPathToGUID(path);
-                    string[] itemGuids = AssetDatabase.FindAssets($"t:{itemType.Name}", new[] { folder });
-                    foreach (string itemGuid in itemGuids)
-                    {
-                        string itemPath = AssetDatabase.GUIDToAssetPath(itemGuid);
-                        // Verify it's actually an ISOCItem without loading the full asset
-                        Type itemAssetType = AssetDatabase.GetMainAssetTypeAtPath(itemPath);
-                        if (itemAssetType != null && typeof(ISOCItem).IsAssignableFrom(itemAssetType))
-                            EnsureItemAddressable(itemPath, label);
-                    }
-                }
-
-                count++;
+                string folder = Path.GetDirectoryName(path)?.Replace('\\', '/');
+                if (!string.IsNullOrEmpty(folder))
+                    collections.Add((collection, path, folder + "/", assetGuid));
             }
+
+            // Build item → labels map: each item gets labels for ALL parent collections
+            var itemLabels = new Dictionary<string, HashSet<string>>();
+
+            foreach (var (collection, path, folder, guid) in collections)
+            {
+                Type itemType = collection.GetItemType();
+                if (itemType == null)
+                    continue;
+
+                string[] itemGuids = AssetDatabase.FindAssets($"t:{itemType.Name}", new[] { Path.GetDirectoryName(path) });
+                foreach (string itemGuid in itemGuids)
+                {
+                    string itemPath = AssetDatabase.GUIDToAssetPath(itemGuid);
+                    Type itemAssetType = AssetDatabase.GetMainAssetTypeAtPath(itemPath);
+                    if (itemAssetType == null || !typeof(ISOCItem).IsAssignableFrom(itemAssetType))
+                        continue;
+
+                    if (!itemLabels.TryGetValue(itemPath, out var labels))
+                    {
+                        labels = new HashSet<string>();
+                        itemLabels[itemPath] = labels;
+                    }
+                    labels.Add(guid);
+                }
+            }
+
+            // Apply labels atomically per item, removing stale collection labels
+            foreach (var (itemPath, labels) in itemLabels)
+                ReconcileItemLabels(itemPath, labels, allCollectionGuids);
+
+            int count = collections.Count;
 
             // Label all IRegisteredSO assets
             string[] registeredGuids = AssetDatabase.FindAssets($"t:{nameof(ScriptableObject)}");
@@ -157,6 +178,39 @@ namespace BrunoMikoski.ScriptableObjectCollections
             settings.AddLabel(collectionLabel);
             if (!entry.labels.Contains(collectionLabel))
                 entry.labels.Add(collectionLabel);
+        }
+
+        /// <summary>
+        /// Set the correct collection labels for an item, removing any stale collection labels.
+        /// An item belongs to every collection whose folder is an ancestor of the item's path.
+        /// </summary>
+        public static void ReconcileItemLabels(string assetPath, HashSet<string> correctLabels, HashSet<string> allCollectionGuids)
+        {
+            var settings = AddressableAssetSettingsDefaultObject.Settings;
+            if (settings == null) return;
+
+            string assetGuid = AssetDatabase.AssetPathToGUID(assetPath);
+            if (string.IsNullOrEmpty(assetGuid)) return;
+
+            var group = GetOrCreateSOCGroup(settings);
+            var entry = settings.CreateOrMoveEntry(assetGuid, group, readOnly: false);
+            entry.address = assetGuid;
+
+            // Remove stale collection labels (labels that are collection GUIDs but shouldn't be)
+            var currentLabels = entry.labels.ToList();
+            foreach (string label in currentLabels)
+            {
+                if (allCollectionGuids.Contains(label) && !correctLabels.Contains(label))
+                    entry.labels.Remove(label);
+            }
+
+            // Add correct collection labels
+            foreach (string label in correctLabels)
+            {
+                settings.AddLabel(label);
+                if (!entry.labels.Contains(label))
+                    entry.labels.Add(label);
+            }
         }
 
         /// <summary>

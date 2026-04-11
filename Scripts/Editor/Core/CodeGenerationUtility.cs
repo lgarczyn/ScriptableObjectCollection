@@ -353,7 +353,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         /// <summary>
         /// Find collection items via AssetDatabase instead of Addressables.
-        /// Avoids MissingReferenceException issues with Addressable handles during code gen.
+        /// Only includes items not owned by a more-specific sub-collection,
+        /// so that nested collections don't produce duplicate accessors.
         /// </summary>
         private static List<ScriptableObject> GetItemsForCodeGen(ScriptableObjectCollection collection)
         {
@@ -363,11 +364,41 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (itemType == null)
                 return new List<ScriptableObject>();
 
+            // Find sub-collection folders to exclude (deeper collections of compatible type)
+            string collectionFolder = folder.Replace('\\', '/') + "/";
+            var subCollectionFolders = new List<string>();
+            string[] allCollectionGuids = AssetDatabase.FindAssets($"t:{nameof(ScriptableObjectCollection)}", new[] { folder });
+            foreach (string guid in allCollectionGuids)
+            {
+                string subPath = AssetDatabase.GUIDToAssetPath(guid);
+                if (subPath == collectionPath)
+                    continue;
+
+                string subFolder = Path.GetDirectoryName(subPath)?.Replace('\\', '/');
+                if (!string.IsNullOrEmpty(subFolder) && subFolder.StartsWith(collectionFolder, StringComparison.Ordinal))
+                    subCollectionFolders.Add(subFolder + "/");
+            }
+
             string[] guids = AssetDatabase.FindAssets($"t:{itemType.Name}", new[] { folder });
             var items = new List<ScriptableObject>();
             foreach (string guid in guids)
             {
                 string path = AssetDatabase.GUIDToAssetPath(guid);
+
+                // Skip items that belong to a more-specific sub-collection
+                string itemFolder = Path.GetDirectoryName(path)?.Replace('\\', '/') + "/";
+                bool ownedBySubCollection = false;
+                foreach (string subFolder in subCollectionFolders)
+                {
+                    if (itemFolder.StartsWith(subFolder, StringComparison.Ordinal))
+                    {
+                        ownedBySubCollection = true;
+                        break;
+                    }
+                }
+                if (ownedBySubCollection)
+                    continue;
+
                 var item = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
                 if (item is ISOCItem)
                     items.Add(item);
