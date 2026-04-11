@@ -189,6 +189,20 @@ namespace BrunoMikoski.ScriptableObjectCollections
             return false;
         }
 
+        /// <summary>
+        /// Find a collection by its baked asset GUID, typed.
+        /// </summary>
+        public static bool TryGetCollectionByGUID<T>(string guid, out T result) where T : ScriptableObjectCollection
+        {
+            if (TryGetCollectionByGUID(guid, out var collection) && collection is T typed)
+            {
+                result = typed;
+                return true;
+            }
+            result = null;
+            return false;
+        }
+
         public virtual Type GetItemType()
         {
             Type baseType = GetType().BaseType;
