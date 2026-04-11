@@ -76,7 +76,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
         /// <summary>
         /// Get an existing item by name, or create a new one if not found.
         /// </summary>
-        public static T GetOrAddNewItem<T>(ScriptableObjectCollection collection, string itemName)
+        public static T GetOrAddNew<T>(ScriptableObjectCollection collection, string itemName)
             where T : ScriptableObject, ISOCItem
         {
             var items = collection.GetLoadedItems();
