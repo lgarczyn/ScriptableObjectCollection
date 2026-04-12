@@ -219,11 +219,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
                 List<string> directives = new List<string>();
                 directives.Add(collection.GetType().Namespace);
-                directives.Add(typeof(List<>).Namespace);
                 directives.Add("System");
-                directives.Add("System.Threading.Tasks");
-                directives.Add("UnityEngine.AddressableAssets");
-                directives.Add("UnityEngine.ResourceManagement.AsyncOperations");
+                directives.Add(typeof(ScriptableObjectCollection).Namespace);
                 directives.AddRange(GetCollectionDirectives(collection));
 
                 string className = collection.GetItemType().Name;
@@ -301,45 +298,31 @@ namespace BrunoMikoski.ScriptableObjectCollections
         {
             string privateValuesName = $"{PrivateValuesName}_{collection.name}";
             string publicValuesName = $"{PublicValuesName}_{collection.name}";
+            string collectionTypeName = collection.GetType().FullName;
 
-            // Cached values field
-            AppendLine(writer, indentation, $"private static {collection.GetType().FullName} {privateValuesName};");
+            // WeakReference fields for collection
+            AppendLine(writer, indentation, $"private static WeakReference<{collectionTypeName}> {privateValuesName};");
             AppendLine(writer, indentation);
 
-            // Cached item fields — use AssetDatabase to find items, not Addressables
+            // WeakReference fields for items
             var items = collection.ItemsGeneric;
             for (int i = 0; i < items.Count; i++)
             {
                 ScriptableObject collectionItem = items[i];
                 Type type = useBaseClass ? collection.GetItemType() : collectionItem.GetType();
                 AppendLine(writer, indentation,
-                    $"private static {type.FullName} cached{collectionItem.name.Sanitize().FirstToUpper()};");
+                    $"private static WeakReference<{type.FullName}> cached{collectionItem.name.Sanitize().FirstToUpper()};");
             }
 
             AppendLine(writer, indentation);
 
-            // Values property - loads collection via Addressables on first access
+            // Values property
             string collectionAddress = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(collection));
             AppendLine(writer, indentation,
-                $"public static {collection.GetType().FullName} {publicValuesName}");
-            AppendLine(writer, indentation, "{");
-            indentation++;
-            AppendLine(writer, indentation, "get");
-            AppendLine(writer, indentation, "{");
-            indentation++;
-            AppendLine(writer, indentation, $"if ({privateValuesName} == null)");
-            indentation++;
-            AppendLine(writer, indentation,
-                $"{privateValuesName} = Addressables.LoadAssetAsync<{collection.GetType().FullName}>(\"{collectionAddress}\").WaitForCompletion();");
-            indentation--;
-            AppendLine(writer, indentation, $"return {privateValuesName};");
-            indentation--;
-            AppendLine(writer, indentation, "}");
-            indentation--;
-            AppendLine(writer, indentation, "}");
+                $"public static {collectionTypeName} {publicValuesName} => ScriptableObjectRegistry.Resolve(ref {privateValuesName}, \"{collectionAddress}\");");
             AppendLine(writer, indentation);
 
-            // Individual item properties — load directly via Addressables using the asset GUID
+            // Individual item properties
             for (int i = 0; i < items.Count; i++)
             {
                 ScriptableObject collectionItem = items[i];
@@ -353,49 +336,10 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 string assetPath = AssetDatabase.GetAssetPath(collectionItem);
                 string assetGuid = AssetDatabase.AssetPathToGUID(assetPath);
 
-                AppendLine(writer, indentation, $"public static {type.FullName} {collectionNameFirstUpper}");
-                AppendLine(writer, indentation, "{");
-                indentation++;
-                AppendLine(writer, indentation, "get");
-                AppendLine(writer, indentation, "{");
-                indentation++;
-                AppendLine(writer, indentation, $"if ({privateStaticCachedName} == null)");
-                indentation++;
                 AppendLine(writer, indentation,
-                    $"{privateStaticCachedName} = Addressables.LoadAssetAsync<{type.FullName}>(\"{assetGuid}\").WaitForCompletion();");
-                indentation--;
-                AppendLine(writer, indentation, $"return {privateStaticCachedName};");
-                indentation--;
-                AppendLine(writer, indentation, "}");
-                indentation--;
-                AppendLine(writer, indentation, "}");
+                    $"public static {type.FullName} {collectionNameFirstUpper} => ScriptableObjectRegistry.Resolve(ref {privateStaticCachedName}, \"{assetGuid}\");");
                 AppendLine(writer, indentation);
             }
-
-            // IsCollectionLoaded property
-            AppendLine(writer, indentation, $"public static bool IsCollectionLoaded => {privateValuesName} != null && {privateValuesName}.IsLoaded;");
-            AppendLine(writer, indentation);
-
-            // UnloadCollection method
-            AppendLine(writer, indentation, "public static void UnloadCollection()");
-            AppendLine(writer, indentation, "{");
-            indentation++;
-            AppendLine(writer, indentation, $"if ({privateValuesName} != null)");
-            indentation++;
-            AppendLine(writer, indentation, $"{privateValuesName}.Unload();");
-            indentation--;
-            AppendLine(writer, indentation, $"{privateValuesName} = null;");
-
-            for (int i = 0; i < items.Count; i++)
-            {
-                ScriptableObject collectionItem = items[i];
-                string collectionNameFirstUpper = collectionItem.name.Sanitize().FirstToUpper();
-                AppendLine(writer, indentation, $"cached{collectionNameFirstUpper} = null;");
-            }
-
-            indentation--;
-            AppendLine(writer, indentation, "}");
-            AppendLine(writer, indentation);
         }
 
     }

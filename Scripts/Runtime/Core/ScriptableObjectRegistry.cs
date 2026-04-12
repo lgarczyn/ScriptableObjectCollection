@@ -22,6 +22,20 @@ namespace BrunoMikoski.ScriptableObjectCollections
         }
 
         /// <summary>
+        /// Resolve a WeakReference, reloading via Addressables if the target was collected or destroyed.
+        /// Used by generated static accessors.
+        /// </summary>
+        public static T Resolve<T>(ref System.WeakReference<T> weakRef, string guid) where T : class
+        {
+            if (weakRef != null && weakRef.TryGetTarget(out var cached) && cached is UnityEngine.Object obj && obj != null)
+                return cached;
+
+            var loaded = Addressables.LoadAssetAsync<T>(guid).WaitForCompletion();
+            weakRef = new System.WeakReference<T>(loaded);
+            return loaded;
+        }
+
+        /// <summary>
         /// Try to find a registered item by its baked asset GUID.
         /// Loads the item via Addressables.
         /// </summary>
