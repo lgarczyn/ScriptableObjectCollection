@@ -71,8 +71,8 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             {
                 string collectionGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(collection));
                 SOCAddressableUtility.EnsureCollectionAddressable(collection, AssetDatabase.GetAssetPath(collection));
-                SOCAddressableUtility.EnsureItemAddressable(AssetDatabase.GetAssetPath(itemAlpha), collectionGuid);
-                SOCAddressableUtility.EnsureItemAddressable(AssetDatabase.GetAssetPath(itemBeta), collectionGuid);
+                SOCAddressableUtility.EnsureItemAddressable(AssetDatabase.GetAssetPath(itemAlpha), collectionGuid, collection.name);
+                SOCAddressableUtility.EnsureItemAddressable(AssetDatabase.GetAssetPath(itemBeta), collectionGuid, collection.name);
             }
 
             // Configure settings

@@ -157,6 +157,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                     if (typeof(ISOCItem).IsAssignableFrom(assetType))
                     {
                         var correctLabels = new HashSet<string>();
+                        string primaryCollectionName = null;
                         foreach (CollectionInfo info in CachedCollections)
                         {
                             if (!info.Collection)
@@ -164,16 +165,20 @@ namespace BrunoMikoski.ScriptableObjectCollections
                             if (changedPath == info.Path)
                                 continue;
                             if (changedPath.StartsWith(info.Folder, StringComparison.Ordinal))
+                            {
                                 correctLabels.Add(info.Label);
+                                primaryCollectionName ??= info.Collection.name;
+                            }
                         }
 
-                        SOCAddressableUtility.ReconcileItemLabels(changedPath, correctLabels, allCollectionGuids);
+                        if (primaryCollectionName != null)
+                            SOCAddressableUtility.ReconcileItemLabels(changedPath, correctLabels, allCollectionGuids, primaryCollectionName);
                     }
 
                     // Auto-label IRegisteredSO assets
                     if (typeof(IRegisteredSO).IsAssignableFrom(assetType))
                     {
-                        SOCAddressableUtility.EnsureItemAddressable(changedPath, ScriptableObjectRegistry.RegisteredLabel);
+                        SOCAddressableUtility.EnsureRegisteredAddressable(changedPath);
                     }
                 }
             }

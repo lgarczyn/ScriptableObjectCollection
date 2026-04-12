@@ -57,6 +57,20 @@ namespace BrunoMikoski.ScriptableObjectCollections
         public override VisualElement CreateInspectorGUI()
         {
             VisualElement root = new();
+
+            if (visualTreeAsset == null)
+            {
+                string[] guids = AssetDatabase.FindAssets("CollectionCustomEditorTreeAsset t:VisualTreeAsset");
+                if (guids.Length > 0)
+                    visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(AssetDatabase.GUIDToAssetPath(guids[0]));
+            }
+
+            if (visualTreeAsset == null)
+            {
+                root.Add(new Label("Could not find CollectionCustomEditorTreeAsset.uxml"));
+                return root;
+            }
+
             visualTreeAsset.CloneTree(root);
 
             collection = (ScriptableObjectCollection)target;
