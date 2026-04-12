@@ -75,36 +75,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
             return true;
         }
 
-        public static bool CreateNewScript(
-            string fileName, string parentFolder, string nameSpace, string[] directives,
-            string codeTemplateFileName, Dictionary<string, string> replacements)
-        {
-            string[] codeTemplateCandidates = AssetDatabase.FindAssets($"t:TextAsset {codeTemplateFileName}.cs");
-            TextAsset codeTemplate = null;
-            if (codeTemplateCandidates.Length > 0)
-            {
-                string codeTemplatePath = AssetDatabase.GUIDToAssetPath(codeTemplateCandidates[0]);
-                codeTemplate = AssetDatabase.LoadAssetAtPath<TextAsset>(codeTemplatePath);
-            }
-
-            if (codeTemplateCandidates.Length == 0 || codeTemplate == null)
-            {
-                Debug.LogError($"Tried to create new script '{parentFolder}/{fileName}' but code template " +
-                               $"'{codeTemplateFileName}.cs.txt' could not be found.");
-                return false;
-            }
-
-            string codeTemplateText = codeTemplate.text;
-
-            foreach (KeyValuePair<string, string> tagToReplacement in replacements)
-            {
-                codeTemplateText = codeTemplateText.Replace($"##{tagToReplacement.Key}##", tagToReplacement.Value);
-            }
-
-            string[] lines = codeTemplateText.Split("\r\n");
-            return CreateNewScript(fileName, parentFolder, nameSpace, directives, lines);
-        }
-
         public static bool CreateNewScript(string fileName, string parentFolder, string nameSpace,
             string classAttributes, string classDeclarationString, string[] innerContent, params string[] directives)
         {
@@ -323,62 +293,10 @@ namespace BrunoMikoski.ScriptableObjectCollections
         /// <summary>
         /// Find collection items via AssetDatabase instead of Addressables.
         /// Only includes items not owned by a more-specific sub-collection,
-        /// so that nested collections don't produce duplicate accessors.
-        /// </summary>
-        private static List<ScriptableObject> GetItemsForCodeGen(ScriptableObjectCollection collection)
-        {
-            string collectionPath = AssetDatabase.GetAssetPath(collection);
-            string folder = Path.GetDirectoryName(collectionPath);
-            Type itemType = collection.GetItemType();
-            if (itemType == null)
-                return new List<ScriptableObject>();
-
-            // Find sub-collection folders to exclude (deeper collections of compatible type)
-            string collectionFolder = folder.Replace('\\', '/') + "/";
-            var subCollectionFolders = new List<string>();
-            string[] allCollectionGuids = AssetDatabase.FindAssets($"t:{nameof(ScriptableObjectCollection)}", new[] { folder });
-            foreach (string guid in allCollectionGuids)
-            {
-                string subPath = AssetDatabase.GUIDToAssetPath(guid);
-                if (subPath == collectionPath)
-                    continue;
-
-                string subFolder = Path.GetDirectoryName(subPath)?.Replace('\\', '/');
-                if (!string.IsNullOrEmpty(subFolder) && subFolder.StartsWith(collectionFolder, StringComparison.Ordinal))
-                    subCollectionFolders.Add(subFolder + "/");
-            }
-
-            string[] guids = AssetDatabase.FindAssets($"t:{itemType.Name}", new[] { folder });
-            var items = new List<ScriptableObject>();
-            foreach (string guid in guids)
-            {
-                string path = AssetDatabase.GUIDToAssetPath(guid);
-
-                // Skip items that belong to a more-specific sub-collection
-                string itemFolder = Path.GetDirectoryName(path)?.Replace('\\', '/') + "/";
-                bool ownedBySubCollection = false;
-                foreach (string subFolder in subCollectionFolders)
-                {
-                    if (itemFolder.StartsWith(subFolder, StringComparison.Ordinal))
-                    {
-                        ownedBySubCollection = true;
-                        break;
-                    }
-                }
-                if (ownedBySubCollection)
-                    continue;
-
-                var item = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
-                if (item is ISOCItem)
-                    items.Add(item);
-            }
-            return items;
-        }
-
         private static string[] GetCollectionDirectives(ScriptableObjectCollection collection)
         {
             HashSet<string> directives = new HashSet<string>();
-            var items = GetItemsForCodeGen(collection);
+            var items = collection.GetLoadedItems();
             for (int i = 0; i < items.Count; i++)
                 directives.Add(items[i].GetType().Namespace);
             return directives.ToArray();
@@ -398,7 +316,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             AppendLine(writer, indentation);
 
             // Cached item fields — use AssetDatabase to find items, not Addressables
-            var items = GetItemsForCodeGen(collection);
+            var items = collection.GetLoadedItems();
             for (int i = 0; i < items.Count; i++)
             {
                 ScriptableObject collectionItem = items[i];
@@ -489,11 +407,5 @@ namespace BrunoMikoski.ScriptableObjectCollections
             AppendLine(writer, indentation);
         }
 
-        public static bool DoesStaticFileForCollectionExist(ScriptableObjectCollection collection)
-        {
-            string folder = GetCollectionScriptFolder(collection);
-            string fileName = SOCSettings.Instance.GetStaticFilenameForCollection(collection);
-            return File.Exists(Path.Combine(folder, $"{fileName}{ExtensionNew}"));
-        }
     }
 }
