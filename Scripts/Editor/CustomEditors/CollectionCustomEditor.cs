@@ -36,7 +36,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
         private List<ScriptableObject> filteredItems = new();
 
         private HelpBox helpbox;
-        private Button generateStaticFileButton;
 
         protected virtual bool DisplayAddButton => true;
         protected virtual bool DisplayRemoveButton => true;
@@ -97,28 +96,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
             removeSelectedItemsButton.RegisterCallback<MouseUpEvent>(OnClickRemoveSelectedItems);
             removeSelectedItemsButton.SetEnabled(DisplayRemoveButton);
 
-            generateStaticFileButton = root.Q<Button>("generate-static-file-button");
+            Button generateStaticFileButton = root.Q<Button>("generate-static-file-button");
             generateStaticFileButton.clickable.activators.Clear();
             generateStaticFileButton.RegisterCallback<MouseUpEvent>(OnClickGenerateStaticFile);
-            UpdateGenerateStaticFileButtonState();
-
-            Toggle writeAsPartialClass = root.Q<Toggle>("write-partial-class-toggle");
-            writeAsPartialClass.value = SOCSettings.Instance.GetWriteAsPartialClass(collection);
-            writeAsPartialClass.SetEnabled(CodeGenerationUtility.CheckIfCanBePartial(collection));
-            writeAsPartialClass.RegisterValueChangedCallback(evt =>
-            {
-                SOCSettings.Instance.SetWriteAsPartialClass(collection, evt.newValue);
-            });
-
-            ObjectField generatedScriptsParentFolderObjectField =
-                root.Q<ObjectField>("generated-scripts-parent-folder");
-            generatedScriptsParentFolderObjectField.value = SOCSettings.Instance.GetParentDefaultAssetScriptsFolderForCollection(collection);
-            generatedScriptsParentFolderObjectField.RegisterValueChangedCallback(evt =>
-            {
-                SOCSettings.Instance.SetGeneratedScriptsParentFolder(collection, evt.newValue);
-                writeAsPartialClass.SetEnabled(CodeGenerationUtility.CheckIfCanBePartial(collection));
-                UpdateGenerateStaticFileButtonState();
-            });
 
             Toggle useBaseClassForItems = root.Q<Toggle>("base-class-for-items-toggle");
             useBaseClassForItems.value = SOCSettings.Instance.GetUseBaseClassForItem(collection);
@@ -312,8 +292,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         private void OnVisualTreeCreated()
         {
-            UpdateGenerateStaticFileButtonState();
-
             if (LAST_ADDED_COLLECTION_ITEM != null)
             {
                 int targetIndex = filteredItems.IndexOf(LAST_ADDED_COLLECTION_ITEM);
@@ -321,12 +299,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
                     RenameItemAtIndex(targetIndex);
                 LAST_ADDED_COLLECTION_ITEM = null;
             }
-        }
-
-        private void UpdateGenerateStaticFileButtonState()
-        {
-            generateStaticFileButton.SetEnabled(
-                AssetDatabase.IsValidFolder(SOCSettings.Instance.GetParentFolderPathForCollection(collection)));
         }
 
         private void OnClickAddNewItem(MouseDownEvent evt)

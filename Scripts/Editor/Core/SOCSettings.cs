@@ -62,9 +62,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
         private int maximumNamespaceDepth = 2;
         public int MaximumNamespaceDepth => maximumNamespaceDepth;
         
-        [SerializeField]
-        internal string generatedScriptsDefaultFilePath = @"Assets\Generated\Scripts";
-
         private static readonly GUIContent namespacePrefixGUIContent = new GUIContent(
             "Prefix",
             "When using the Create New Collection wizard," +
@@ -120,31 +117,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 }
             }
             
-            EditorGUILayout.LabelField("Default Generated Scripts Folder", EditorStyles.boldLabel);
-            using (EditorGUI.ChangeCheckScope changeCheck = new EditorGUI.ChangeCheckScope())
-            {
-                DefaultAsset pathObject = AssetDatabase.LoadAssetAtPath<DefaultAsset>(generatedScriptsDefaultFilePath);
-                
-                pathObject = (DefaultAsset) EditorGUILayout.ObjectField(
-                    "Generated Scripts Parent Folder",
-                    pathObject,
-                    typeof(DefaultAsset),
-                    false
-                );
-                string assetPath = AssetDatabase.GetAssetPath(pathObject);
-
-                if (changeCheck.changed)
-                {
-                    generatedScriptsDefaultFilePath = assetPath;
-                    Save();
-                }
-            }
-        }
-
-        public void SetGeneratedScriptsDefaultFilePath(string assetPath)
-        {
-            generatedScriptsDefaultFilePath = assetPath;
-            Save();
         }
 
         public void Save()
@@ -154,38 +126,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
         }
 
 
-        public string GetParentFolderPathForCollection(ScriptableObjectCollection collection)
-        {
-            CollectionSettings settings = GetOrCreateCollectionSettings(collection);
-            if (!string.IsNullOrEmpty(settings.ParentFolderPath) && AssetDatabase.IsValidFolder(settings.ParentFolderPath))
-            {
-                return settings.ParentFolderPath;
-            }
-
-            return string.Empty;
-        }
-        public DefaultAsset GetParentDefaultAssetScriptsFolderForCollection(ScriptableObjectCollection collection)
-        {
-            CollectionSettings settings = GetOrCreateCollectionSettings(collection);
-            if (!string.IsNullOrEmpty(settings.ParentFolderPath) &&
-                AssetDatabase.IsValidFolder(settings.ParentFolderPath))
-            {
-                return AssetDatabase.LoadAssetAtPath<DefaultAsset>(settings.ParentFolderPath);
-            }
-            
-            return null;
-        }
-        
-        public void SetGeneratedScriptsParentFolder(ScriptableObjectCollection collection, Object evtNewValue)
-        {
-            string assetPath = string.Empty;
-            if (evtNewValue != null)
-                assetPath = AssetDatabase.GetAssetPath(evtNewValue);
-
-            CollectionSettings settings = GetOrCreateCollectionSettings(collection);
-            settings.SetParentFolderPath(assetPath);
-        }
-        
         public bool GetUseBaseClassForItem(ScriptableObjectCollection collection)
         {
             return GetOrCreateCollectionSettings(collection).UseBaseClassForItems;
@@ -197,23 +137,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
             settings.SetUseBaseClassForItems(useBaseClass);
         }
 
-        public bool GetWriteAsPartialClass(ScriptableObjectCollection collection)
-        {
-            CollectionSettings settings = GetOrCreateCollectionSettings(collection);
-            if (settings.WriteAsPartialClass && CodeGenerationUtility.CheckIfCanBePartial(collection))
-                return true;
-
-            SetWriteAsPartialClass(collection, false);
-            
-            return false;
-        }
-        
-        public void SetWriteAsPartialClass(ScriptableObjectCollection collection, bool writeAsPartial)
-        {
-            CollectionSettings settings = GetOrCreateCollectionSettings(collection);
-            settings.SetWriteAsPartialClass(writeAsPartial);
-        }
-        
         public string GetNamespaceForCollection(ScriptableObjectCollection collection)
         {
             return GetOrCreateCollectionSettings(collection).Namespace;

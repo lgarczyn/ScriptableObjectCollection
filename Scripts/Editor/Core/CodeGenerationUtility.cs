@@ -4,8 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using UnityEditor;
-using UnityEditor.Compilation;
-using UnityEditorInternal;
 using UnityEngine;
 
 namespace BrunoMikoski.ScriptableObjectCollections
@@ -24,25 +22,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             // Make sure the folder exists.
             AssetDatabaseUtils.CreatePathIfDoesntExist(parentFolder);
-
-            // Check if the created folder is an editor folder.
-            const string editorFolderName = "Editor";
-            bool isEditorFolder = parentFolder.Contains($"/{editorFolderName}/", StringComparison.Ordinal) ||
-                                  parentFolder.EndsWith($"/{editorFolderName}", StringComparison.Ordinal);
-            if (isEditorFolder)
-            {
-                int lastOccurrenceOfEditorName = parentFolder.LastIndexOf($"/{editorFolderName}",
-                    StringComparison.OrdinalIgnoreCase);
-                string editorFolderPath = parentFolder.Substring(
-                    0, lastOccurrenceOfEditorName + editorFolderName.Length + 1);
-
-                AssemblyDefinitionAsset editorAsmDefToReference = AsmDefUtility
-                    .GetParentEditorAsmDef(editorFolderPath);
-                if (editorAsmDefToReference != null)
-                {
-                    AsmDefUtility.AddAsmRefToTopLevelEditorFolder(editorFolderPath);
-                }
-            }
 
             // Check that the file doesn't exist yet.
             string finalFilePath = Path.Combine(parentFolder, $"{fileName}.cs");
@@ -230,30 +209,21 @@ namespace BrunoMikoski.ScriptableObjectCollections
             }
         }
 
-        public static void DisablePartialClassGenerationIfDisallowed(ScriptableObjectCollection collection)
+        /// <summary>
+        /// Get the folder where the collection's script lives.
+        /// Generated code goes next to it.
+        /// </summary>
+        public static string GetCollectionScriptFolder(ScriptableObjectCollection collection)
         {
-            bool canBePartial = CheckIfCanBePartial(collection);
-            if (SOCSettings.Instance.GetWriteAsPartialClass(collection) && !canBePartial)
+            MonoScript script = MonoScript.FromScriptableObject(collection);
+            if (script != null)
             {
-                SOCSettings.Instance.SetWriteAsPartialClass(collection, false);
+                string scriptPath = AssetDatabase.GetAssetPath(script);
+                if (!string.IsNullOrEmpty(scriptPath))
+                    return Path.GetDirectoryName(scriptPath);
             }
-        }
-
-        public static bool CheckIfCanBePartial(ScriptableObjectCollection collection, string destinationFolder = "")
-        {
-            string baseClassPath = AssetDatabase.GetAssetPath(MonoScript.FromScriptableObject(collection));
-            string baseAssembly = CompilationPipeline.GetAssemblyNameFromScriptPath(baseClassPath);
-            if (string.IsNullOrEmpty(destinationFolder))
-            {
-                destinationFolder = SOCSettings.Instance.GetParentFolderPathForCollection(collection);
-            }
-
-            string destinationFolderAssembly = CompilationPipeline.GetAssemblyNameFromScriptPath(destinationFolder);
-
-            bool canBePartial = !string.IsNullOrEmpty(baseAssembly) &&
-                                baseAssembly.Equals(destinationFolderAssembly, StringComparison.Ordinal);
-
-            return canBePartial;
+            // Fallback: next to the collection asset itself
+            return Path.GetDirectoryName(AssetDatabase.GetAssetPath(collection));
         }
 
         public static void GenerateStaticCollectionScript(ScriptableObjectCollection collection)
@@ -264,13 +234,12 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 return;
             }
 
-            DisablePartialClassGenerationIfDisallowed(collection);
-
             string fileName = SOCSettings.Instance.GetStaticFilenameForCollection(collection);
             string nameSpace = SOCSettings.Instance.GetNamespaceForCollection(collection);
-            string finalFolder = AssetDatabase.GetAssetPath(SOCSettings.Instance.GetParentDefaultAssetScriptsFolderForCollection(collection));
+            string finalFolder = GetCollectionScriptFolder(collection);
 
-            bool writeAsPartial = SOCSettings.Instance.GetWriteAsPartialClass(collection);
+            // Always partial — generated code is next to the collection script, same assembly
+            bool writeAsPartial = true;
             bool useBaseClass = SOCSettings.Instance.GetUseBaseClassForItem(collection);
 
             AssetDatabaseUtils.CreatePathIfDoesntExist(finalFolder);
@@ -522,9 +491,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         public static bool DoesStaticFileForCollectionExist(ScriptableObjectCollection collection)
         {
-            return File.Exists(Path.Combine(
-                AssetDatabase.GetAssetPath(SOCSettings.Instance.GetParentDefaultAssetScriptsFolderForCollection(collection)),
-                $"{SOCSettings.Instance.GetStaticFilenameForCollection(collection)}{ExtensionNew}"));
+            string folder = GetCollectionScriptFolder(collection);
+            string fileName = SOCSettings.Instance.GetStaticFilenameForCollection(collection);
+            return File.Exists(Path.Combine(folder, $"{fileName}{ExtensionNew}"));
         }
     }
 }

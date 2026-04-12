@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using UnityEditor;
 
 namespace BrunoMikoski.ScriptableObjectCollections
@@ -9,8 +8,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
     {
         public string Namespace;
         public string StaticFilename;
-        public string ParentFolderPath;
-        public bool WriteAsPartialClass;
         public bool UseBaseClassForItems;
 
         private AssetImporter importer;
@@ -27,28 +24,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 targetNamespace = $"{SOCSettings.Instance.NamespacePrefix}";
 
             Namespace = targetNamespace;
-
-            if (!string.IsNullOrEmpty(SOCSettings.Instance.generatedScriptsDefaultFilePath) && AssetDatabase.IsValidFolder(SOCSettings.Instance.generatedScriptsDefaultFilePath))
-            {
-                ParentFolderPath = SOCSettings.Instance.generatedScriptsDefaultFilePath;
-            }
-            else
-            {
-                MonoScript script = MonoScript.FromScriptableObject(targetCollection);
-                string baseClassPath = script != null ? AssetDatabase.GetAssetPath(script) : null;
-                ParentFolderPath = !string.IsNullOrEmpty(baseClassPath)
-                    ? Path.GetDirectoryName(baseClassPath)
-                    : AssetDatabase.GetAssetPath(targetCollection);
-            }
-
-            bool canBePartial = CodeGenerationUtility.CheckIfCanBePartial(targetCollection, ParentFolderPath);
-
-            if (canBePartial)
-                StaticFilename = $"{targetCollection.GetType().Name}Static".FirstToUpper();
-            else
-                StaticFilename = $"{targetCollection.GetType().Name}".FirstToUpper();
-
-            WriteAsPartialClass = canBePartial;
+            StaticFilename = $"{targetCollection.GetType().Name}Static".FirstToUpper();
             UseBaseClassForItems = false;
             Save();
         }
@@ -85,30 +61,12 @@ namespace BrunoMikoski.ScriptableObjectCollections
             Save();
         }
 
-        public void SetWriteAsPartialClass(bool writeAsPartial)
-        {
-            if (WriteAsPartialClass == writeAsPartial)
-                return;
-
-            WriteAsPartialClass = writeAsPartial;
-            Save();
-        }
-
         public void SetUseBaseClassForItems(bool useBaseClass)
         {
             if (UseBaseClassForItems == useBaseClass)
                 return;
 
             UseBaseClassForItems = useBaseClass;
-            Save();
-        }
-
-        public void SetParentFolderPath(string assetPath)
-        {
-            if (string.Equals(ParentFolderPath, assetPath, StringComparison.Ordinal))
-                return;
-
-            ParentFolderPath = assetPath;
             Save();
         }
     }

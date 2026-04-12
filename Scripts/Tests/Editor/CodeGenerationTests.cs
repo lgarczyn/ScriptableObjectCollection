@@ -14,7 +14,6 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
     {
         private const string TestFolder = "Assets/SOCCodeGenTestTemp";
         private const string ItemsFolder = "Assets/SOCCodeGenTestTemp/Items";
-        private const string ScriptsFolder = "Assets/SOCCodeGenTestTemp/Scripts";
         private static TestCollection collection;
         private static TestItem itemAlpha;
         private static TestItem itemBeta;
@@ -38,8 +37,6 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
         {
             AssetDatabaseUtils.CreatePathIfDoesntExist(TestFolder);
             AssetDatabaseUtils.CreatePathIfDoesntExist(ItemsFolder);
-            AssetDatabaseUtils.CreatePathIfDoesntExist(ScriptsFolder);
-
             collection = ScriptableObject.CreateInstance<TestCollection>();
             collection.name = "TestCodeGenCollection";
             AssetDatabase.CreateAsset(collection, $"{TestFolder}/TestCodeGenCollection.asset");
@@ -81,10 +78,10 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             // Configure settings
             SOCSettings.Instance.SetNamespaceForCollection(collection, "TestNamespace");
             SOCSettings.Instance.SetStaticFilenameForCollection(collection, "TestCodeGenCollectionStatic");
-            SOCSettings.Instance.SetGeneratedScriptsParentFolder(collection,
-                AssetDatabase.LoadAssetAtPath<DefaultAsset>(ScriptsFolder));
 
-            generatedFilePath = Path.Combine(ScriptsFolder, "TestCodeGenCollectionStatic.g.cs");
+            // Generated file goes next to collection script (falls back to collection asset folder)
+            string genFolder = CodeGenerationUtility.GetCollectionScriptFolder(collection);
+            generatedFilePath = Path.Combine(genFolder, "TestCodeGenCollectionStatic.g.cs");
 
             // Generate the static file once
             CodeGenerationUtility.GenerateStaticCollectionScript(collection);
