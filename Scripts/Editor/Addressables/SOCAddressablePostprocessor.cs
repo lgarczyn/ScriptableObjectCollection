@@ -116,51 +116,70 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             RebuildCache(changedPaths);
 
-            // Bake asset GUIDs into m_Guid fields
-            BakeGuids(changedPaths);
+            int totalSteps = changedPaths.Count;
+            int currentStep = 0;
 
-            // Build set of all known collection GUIDs for stale label detection
-            var allCollectionGuids = new HashSet<string>();
-            foreach (CollectionInfo info in CachedCollections)
-                if (info.Collection)
-                    allCollectionGuids.Add(info.Label);
-
-            // Ensure changed collections themselves are addressable
-            foreach (CollectionInfo info in CachedCollections)
+            try
             {
-                if (info.Collection && changedPaths.Contains(info.Path))
-                    SOCAddressableUtility.EnsureCollectionAddressable(info.Collection, info.Path);
-            }
+                // Bake asset GUIDs into m_Guid fields
+                BakeGuids(changedPaths);
 
-            // For each changed item, compute ALL parent collection labels, then reconcile
-            foreach (string changedPath in changedPaths)
-            {
-                Type assetType = AssetDatabase.GetMainAssetTypeAtPath(changedPath);
-                if (assetType == null || !typeof(ISOCItem).IsAssignableFrom(assetType))
-                    continue;
+                // Build set of all known collection GUIDs for stale label detection
+                var allCollectionGuids = new HashSet<string>();
+                foreach (CollectionInfo info in CachedCollections)
+                    if (info.Collection)
+                        allCollectionGuids.Add(info.Label);
 
-                var correctLabels = new HashSet<string>();
+                // Ensure changed collections themselves are addressable
                 foreach (CollectionInfo info in CachedCollections)
                 {
-                    if (!info.Collection)
-                        continue;
-                    if (changedPath == info.Path)
-                        continue;
-                    if (changedPath.StartsWith(info.Folder, StringComparison.Ordinal))
-                        correctLabels.Add(info.Label);
+                    if (info.Collection && changedPaths.Contains(info.Path))
+                        SOCAddressableUtility.EnsureCollectionAddressable(info.Collection, info.Path);
                 }
 
-                SOCAddressableUtility.ReconcileItemLabels(changedPath, correctLabels, allCollectionGuids);
-            }
-
-            // Auto-label IRegisteredSO assets
-            foreach (string changedPath in changedPaths)
-            {
-                Type assetType = AssetDatabase.GetMainAssetTypeAtPath(changedPath);
-                if (assetType != null && typeof(IRegisteredSO).IsAssignableFrom(assetType))
+                // Process each changed asset
+                foreach (string changedPath in changedPaths)
                 {
-                    SOCAddressableUtility.EnsureItemAddressable(changedPath, ScriptableObjectRegistry.RegisteredLabel);
+                    currentStep++;
+                    if (EditorUtility.DisplayCancelableProgressBar(
+                        "SOC Postprocessor",
+                        changedPath,
+                        (float)currentStep / totalSteps))
+                    {
+                        break;
+                    }
+
+                    Type assetType = AssetDatabase.GetMainAssetTypeAtPath(changedPath);
+                    if (assetType == null)
+                        continue;
+
+                    // Reconcile item labels
+                    if (typeof(ISOCItem).IsAssignableFrom(assetType))
+                    {
+                        var correctLabels = new HashSet<string>();
+                        foreach (CollectionInfo info in CachedCollections)
+                        {
+                            if (!info.Collection)
+                                continue;
+                            if (changedPath == info.Path)
+                                continue;
+                            if (changedPath.StartsWith(info.Folder, StringComparison.Ordinal))
+                                correctLabels.Add(info.Label);
+                        }
+
+                        SOCAddressableUtility.ReconcileItemLabels(changedPath, correctLabels, allCollectionGuids);
+                    }
+
+                    // Auto-label IRegisteredSO assets
+                    if (typeof(IRegisteredSO).IsAssignableFrom(assetType))
+                    {
+                        SOCAddressableUtility.EnsureItemAddressable(changedPath, ScriptableObjectRegistry.RegisteredLabel);
+                    }
                 }
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
             }
         }
 
