@@ -79,10 +79,10 @@ namespace BrunoMikoski.ScriptableObjectCollections
         public static T GetOrAddNew<T>(this ScriptableObjectCollection collection, string itemName)
             where T : ScriptableObject, ISOCItem
         {
-            var items = collection.GetLoadedItems();
-            for (int i = 0; i < items.Count; i++)
+            var items = collection.ItemsGeneric;
+            foreach (var t in items)
             {
-                if (items[i] is T typed && string.Equals(typed.name, itemName, StringComparison.Ordinal))
+                if (t is T typed && string.Equals(typed.name, itemName, StringComparison.Ordinal))
                     return typed;
             }
 

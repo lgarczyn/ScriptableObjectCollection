@@ -22,7 +22,7 @@ namespace TestNamespace
             get
             {
                 if (cachedValues_TestCodeGenCollection == null)
-                    cachedValues_TestCodeGenCollection = Addressables.LoadAssetAsync<BrunoMikoski.ScriptableObjectCollections.Tests.TestCollection>("f8ca69cdc241cf347a0fb14fba230646").WaitForCompletion();
+                    cachedValues_TestCodeGenCollection = Addressables.LoadAssetAsync<BrunoMikoski.ScriptableObjectCollections.Tests.TestCollection>("bed8a6bae37cb74488d9c514a60dbf2e").WaitForCompletion();
                 return cachedValues_TestCodeGenCollection;
             }
         }
@@ -32,7 +32,7 @@ namespace TestNamespace
             get
             {
                 if (cachedAlpha == null)
-                    cachedAlpha = Addressables.LoadAssetAsync<BrunoMikoski.ScriptableObjectCollections.Tests.TestItem>("d19c868d72ba7fe4c82a02f6eef52165").WaitForCompletion();
+                    cachedAlpha = Addressables.LoadAssetAsync<BrunoMikoski.ScriptableObjectCollections.Tests.TestItem>("5925188d8dbb8df4a8c024e5f085a33a").WaitForCompletion();
                 return cachedAlpha;
             }
         }
@@ -42,7 +42,7 @@ namespace TestNamespace
             get
             {
                 if (cachedBeta == null)
-                    cachedBeta = Addressables.LoadAssetAsync<BrunoMikoski.ScriptableObjectCollections.Tests.TestItem>("867decf4069045c4c9e741ee0cc7c4f6").WaitForCompletion();
+                    cachedBeta = Addressables.LoadAssetAsync<BrunoMikoski.ScriptableObjectCollections.Tests.TestItem>("d8b777ca261a58f46836d9464c3c2010").WaitForCompletion();
                 return cachedBeta;
             }
         }

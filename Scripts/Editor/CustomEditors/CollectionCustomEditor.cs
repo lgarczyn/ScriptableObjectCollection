@@ -353,7 +353,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             filteredItems.Clear();
 
-            var allItems = collection.GetLoadedItems();
+            var allItems = collection.ItemsGeneric;
             foreach (var collectionItem in allItems)
             {
                 if (collectionItem.name.IndexOf(targetText, StringComparison.OrdinalIgnoreCase) > -1)
@@ -428,7 +428,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             // Force reload from Addressables
             collection.Unload();
-            var items = collection.GetLoadedItems();
+            var items = collection.ItemsGeneric;
 
             for (int i = 0; i < items.Count; i++)
             {

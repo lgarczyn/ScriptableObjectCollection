@@ -45,41 +45,41 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             Assert.AreEqual(typeof(TestItem), collection.GetItemType());
         }
 
-        // --- LoadSync error handling ---
+        // --- Load error handling ---
 
         [Test]
-        public void LoadSync_WithInvalidKey_DoesNotThrow()
+        public void Load_WithInvalidKey_DoesNotThrow()
         {
             LogAssert.ignoreFailingMessages = true;
-            Assert.DoesNotThrow(() => collection.LoadSync());
+            Assert.DoesNotThrow(() => collection.Load());
             LogAssert.ignoreFailingMessages = false;
         }
 
         [Test]
-        public void LoadSync_WithInvalidKey_SetsIsLoaded()
+        public void Load_WithInvalidKey_SetsIsLoaded()
         {
             LogAssert.ignoreFailingMessages = true;
-            collection.LoadSync();
+            collection.Load();
             LogAssert.ignoreFailingMessages = false;
 
             Assert.IsTrue(collection.IsLoaded);
         }
 
         [Test]
-        public void LoadSync_WithInvalidKey_ReturnsEmptyItems()
+        public void Load_WithInvalidKey_ReturnsEmptyItems()
         {
             LogAssert.ignoreFailingMessages = true;
-            collection.LoadSync();
+            collection.Load();
             LogAssert.ignoreFailingMessages = false;
 
-            Assert.AreEqual(0, collection.GetLoadedItems().Count);
+            Assert.AreEqual(0, collection.Items.Count);
         }
 
         [Test]
         public void GetLoadedItems_WithInvalidKey_ReturnsEmptyList()
         {
             LogAssert.ignoreFailingMessages = true;
-            var items = collection.GetLoadedItems();
+            var items = collection.Items;
             LogAssert.ignoreFailingMessages = false;
 
             Assert.IsNotNull(items);
@@ -98,7 +98,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
         public void Unload_AfterLoad_ClearsIsLoaded()
         {
             LogAssert.ignoreFailingMessages = true;
-            collection.LoadSync();
+            collection.Load();
             LogAssert.ignoreFailingMessages = false;
 
             Assert.IsTrue(collection.IsLoaded);

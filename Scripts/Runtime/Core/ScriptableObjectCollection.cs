@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
+using System.Collections.ObjectModel;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -25,67 +25,46 @@ namespace BrunoMikoski.ScriptableObjectCollections
         /// </summary>
         public string AddressableLabel => m_Guid;
 
-        [NonSerialized] private List<ScriptableObject> loadedItems;
-        [NonSerialized] private AsyncOperationHandle<IList<ScriptableObject>> itemsHandle;
-        [NonSerialized] private bool isLoaded;
+        public abstract bool IsLoaded { get; }
+        public abstract void Load();
+        public abstract void Unload();
 
-        public bool IsLoaded => isLoaded;
+        /// <summary>
+        /// Untyped access to loaded items for editor code.
+        /// Returns the same objects as the typed Items property on the generic subclass.
+        /// </summary>
+        public abstract IReadOnlyList<ScriptableObject> ItemsGeneric { get; }
 
-        public void LoadSync()
+        public abstract Type GetItemType();
+
+        // ---- Static: FindAll (cached with handle) ----
+
+        private static AsyncOperationHandle<IList<ScriptableObjectCollection>> findAllHandle;
+        private static List<ScriptableObjectCollection> cachedFindAll;
+
+        /// <summary>
+        /// Load all collections via Addressables. Cached — only loads once.
+        /// </summary>
+        public static IReadOnlyList<ScriptableObjectCollection> FindAll()
         {
-            if (isLoaded) return;
+            if (cachedFindAll != null)
+                return cachedFindAll;
 
             try
             {
-                itemsHandle = Addressables.LoadAssetsAsync<ScriptableObject>(AddressableLabel, null);
-                var result = itemsHandle.WaitForCompletion();
-                loadedItems = result != null ? new List<ScriptableObject>(result) : new List<ScriptableObject>();
+                findAllHandle = Addressables.LoadAssetsAsync<ScriptableObjectCollection>(AllCollectionsLabel, null);
+                var results = findAllHandle.WaitForCompletion();
+                cachedFindAll = results != null
+                    ? new List<ScriptableObjectCollection>(results)
+                    : new List<ScriptableObjectCollection>();
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"Failed to load items for collection '{name}': {e.Message}");
-                loadedItems = new List<ScriptableObject>();
+                Debug.LogWarning($"Failed to load collections: {e.Message}");
+                cachedFindAll = new List<ScriptableObjectCollection>();
             }
-            isLoaded = true;
-        }
 
-        public virtual void Unload()
-        {
-            if (!isLoaded) return;
-
-            if (itemsHandle.IsValid())
-                Addressables.Release(itemsHandle);
-
-            loadedItems = null;
-            isLoaded = false;
-            ClearCache();
-        }
-
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void OnSubsystemRegistration()
-        {
-            // Clear caches on domain reload and play mode enter
-            ClearCache();
-        }
-
-        /// <summary>
-        /// Untyped access to loaded items. Prefer Values on the generic subclass.
-        /// </summary>
-        public IReadOnlyList<ScriptableObject> GetLoadedItems()
-        {
-            if (!isLoaded)
-                LoadSync();
-            return loadedItems;
-        }
-
-        /// <summary>
-        /// Load all collections via Addressables using the shared label.
-        /// </summary>
-        public static List<ScriptableObjectCollection> FindAll()
-        {
-            var handle = Addressables.LoadAssetsAsync<ScriptableObjectCollection>(AllCollectionsLabel, null);
-            var results = handle.WaitForCompletion();
-            return new List<ScriptableObjectCollection>(results);
+            return cachedFindAll;
         }
 
         /// <summary>
@@ -103,22 +82,18 @@ namespace BrunoMikoski.ScriptableObjectCollections
             return result;
         }
 
+        // ---- Static: OfType cache ----
+
         private static class Cache<T> where T : ScriptableObject
         {
             public static List<T> ofType;
-
-            public static void Clear()
-            {
-                ofType = null;
-            }
+            public static void Clear() => ofType = null;
         }
 
         private static readonly List<Action> cacheClearActions = new();
 
         /// <summary>
-        /// Get all items of a given type across ALL collections.
-        /// Items belonging to multiple collections are included only once.
-        /// Results are cached; call ClearCache() or Unload collections to invalidate.
+        /// Get all items of a given type across ALL collections. Cached.
         /// </summary>
         public static IReadOnlyList<T> OfType<T>() where T : ScriptableObject
         {
@@ -129,30 +104,17 @@ namespace BrunoMikoski.ScriptableObjectCollections
             var seen = new HashSet<T>();
             foreach (var collection in FindAll())
             {
-                var items = collection.GetLoadedItems();
+                var items = collection.ItemsGeneric;
                 for (int i = 0; i < items.Count; i++)
                     if (items[i] is T typed && seen.Add(typed))
                         result.Add(typed);
             }
             Cache<T>.ofType = result;
-            RegisterCacheClear<T>();
+            cacheClearActions.Add(Cache<T>.Clear);
             return result;
         }
 
-        private static void RegisterCacheClear<T>() where T : ScriptableObject
-        {
-            cacheClearActions.Add(Cache<T>.Clear);
-        }
-
-        /// <summary>
-        /// Clear the static Values/OfType caches.
-        /// </summary>
-        public static void ClearCache()
-        {
-            for (int i = 0; i < cacheClearActions.Count; i++)
-                cacheClearActions[i]();
-            cacheClearActions.Clear();
-        }
+        // ---- Static: GUID lookups ----
 
         /// <summary>
         /// Load an item by its asset GUID via Addressables.
@@ -200,21 +162,103 @@ namespace BrunoMikoski.ScriptableObjectCollections
             return false;
         }
 
-        public abstract Type GetItemType();
+        // ---- Static: cache lifecycle ----
+
+        /// <summary>
+        /// Clear all static caches. Called on domain reload and play mode exit.
+        /// Does NOT unload individual collections.
+        /// </summary>
+        public static void ClearCache()
+        {
+            for (int i = 0; i < cacheClearActions.Count; i++)
+                cacheClearActions[i]();
+            cacheClearActions.Clear();
+
+            cachedFindAll = null;
+            if (findAllHandle.IsValid())
+            {
+                Addressables.Release(findAllHandle);
+                findAllHandle = default;
+            }
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void OnSubsystemRegistration()
+        {
+            ClearCache();
+        }
     }
 
     public class ScriptableObjectCollection<TObjectType> : ScriptableObjectCollection, IEnumerable<TObjectType>
         where TObjectType : ScriptableObject, ISOCItem
     {
+        [NonSerialized] private List<TObjectType> loadedItems;
+        [NonSerialized] private AsyncOperationHandle<IList<ScriptableObject>> itemsHandle;
+        [NonSerialized] private bool isLoaded;
+
+        public override bool IsLoaded => isLoaded;
+
+        /// <summary>
+        /// Typed items in this collection. Loads on first access.
+        /// </summary>
+        public override IReadOnlyList<ScriptableObject> ItemsGeneric => Items;
+
+        public IReadOnlyList<TObjectType> Items
+        {
+            get
+            {
+                if (!isLoaded)
+                    Load();
+                return loadedItems;
+            }
+        }
+
         /// <summary>
         /// All items of this collection's type across all collections. Cached.
         /// </summary>
         public static IReadOnlyList<TObjectType> Values => OfType<TObjectType>();
 
+        public override void Load()
+        {
+            if (isLoaded) return;
+
+            try
+            {
+                itemsHandle = Addressables.LoadAssetsAsync<ScriptableObject>(AddressableLabel, null);
+                var result = itemsHandle.WaitForCompletion();
+
+                loadedItems = new List<TObjectType>();
+                if (result != null)
+                {
+                    foreach (var item in result)
+                        if (item is TObjectType typed)
+                            loadedItems.Add(typed);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"Failed to load items for collection '{name}': {e.Message}");
+                loadedItems = new List<TObjectType>();
+            }
+
+            isLoaded = true;
+        }
+
+        public override void Unload()
+        {
+            if (!isLoaded) return;
+
+            if (itemsHandle.IsValid())
+                Addressables.Release(itemsHandle);
+
+            loadedItems = null;
+            isLoaded = false;
+            ClearCache();
+        }
+
         public override Type GetItemType() => typeof(TObjectType);
-        public IEnumerable<TObjectType> Items => GetLoadedItems().OfType<TObjectType>();
-        // TODO: clean this mess
-        public IEnumerator<TObjectType> GetEnumerator() => GetLoadedItems().OfType<TObjectType>().GetEnumerator();
+
+        public IEnumerator<TObjectType> GetEnumerator() => Items.GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

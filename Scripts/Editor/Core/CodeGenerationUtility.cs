@@ -287,7 +287,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
         private static string[] GetCollectionDirectives(ScriptableObjectCollection collection)
         {
             HashSet<string> directives = new HashSet<string>();
-            var items = collection.GetLoadedItems();
+            var items = collection.ItemsGeneric;
             for (int i = 0; i < items.Count; i++)
                 directives.Add(items[i].GetType().Namespace);
             return directives.ToArray();
@@ -307,7 +307,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             AppendLine(writer, indentation);
 
             // Cached item fields — use AssetDatabase to find items, not Addressables
-            var items = collection.GetLoadedItems();
+            var items = collection.ItemsGeneric;
             for (int i = 0; i < items.Count; i++)
             {
                 ScriptableObject collectionItem = items[i];
