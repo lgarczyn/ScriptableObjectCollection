@@ -105,12 +105,10 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         private static class Cache<T> where T : ScriptableObject
         {
-            public static List<T> values;
             public static List<T> ofType;
 
             public static void Clear()
             {
-                values = null;
                 ofType = null;
             }
         }
@@ -202,17 +200,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             return false;
         }
 
-        public virtual Type GetItemType()
-        {
-            Type baseType = GetType().BaseType;
-            while (baseType != null)
-            {
-                if (baseType.IsGenericType && baseType.GetGenericTypeDefinition() == typeof(ScriptableObjectCollection<>))
-                    return baseType.GetGenericArguments().First();
-                baseType = baseType.BaseType;
-            }
-            return null;
-        }
+        public abstract Type GetItemType();
     }
 
     public class ScriptableObjectCollection<TObjectType> : ScriptableObjectCollection, IEnumerable<TObjectType>
@@ -227,6 +215,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
         {
             base.Unload();
         }
+        public override Type GetItemType() => typeof(TObjectType);
         public IEnumerable<TObjectType> Items => GetLoadedItems().OfType<TObjectType>();
         // TODO: clean this mess
         public IEnumerator<TObjectType> GetEnumerator() => GetLoadedItems().OfType<TObjectType>().GetEnumerator();

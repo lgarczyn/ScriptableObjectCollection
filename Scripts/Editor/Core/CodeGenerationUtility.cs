@@ -116,8 +116,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             return stringBuilder.ToString();
         }
 
-        private static void AppendHeader(StreamWriter writer, ref int indentation, string nameSpace, string classAttributes, string className,
-            bool isPartial, bool isStatic, params string[] directives)
+        private static void AppendHeader(StreamWriter writer, ref int indentation, string nameSpace, string classAttributes, string className, bool isStatic, params string[] directives)
         {
             writer.WriteLine("//  Automatically generated");
             writer.WriteLine("//");
@@ -148,8 +147,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             finalClassDeclaration += "public ";
             if (isStatic)
                 finalClassDeclaration += "static ";
-            if (isPartial)
-                finalClassDeclaration += "partial ";
+            finalClassDeclaration += "partial ";
             finalClassDeclaration += "class ";
             finalClassDeclaration += className;
 
@@ -209,7 +207,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
             string finalFolder = GetCollectionScriptFolder(collection);
 
             // Always partial — generated code is next to the collection script, same assembly
-            bool writeAsPartial = true;
             bool useBaseClass = SOCSettings.Instance.GetUseBaseClassForItem(collection);
 
             AssetDatabaseUtils.CreatePathIfDoesntExist(finalFolder);
@@ -231,9 +228,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
                 string className = collection.GetItemType().Name;
 
-                if (!writeAsPartial)
-                    className = fileName;
-                else if (className.Equals(nameof(ScriptableObject)))
+                if (className.Equals(nameof(ScriptableObject)))
                 {
                     Debug.LogWarning($"Cannot create static class using the collection type name ({nameof(ScriptableObject)})" +
                         $"The \"Static File Name\" ({fileName}) will be used as its class name instead.");
@@ -241,7 +236,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 }
 
                 AppendHeader(writer, ref indentation, nameSpace, "", className,
-                    writeAsPartial,
                     false, directives.Distinct().ToArray()
                 );
 
@@ -290,9 +284,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
             return true;
         }
 
-        /// <summary>
-        /// Find collection items via AssetDatabase instead of Addressables.
-        /// Only includes items not owned by a more-specific sub-collection,
         private static string[] GetCollectionDirectives(ScriptableObjectCollection collection)
         {
             HashSet<string> directives = new HashSet<string>();

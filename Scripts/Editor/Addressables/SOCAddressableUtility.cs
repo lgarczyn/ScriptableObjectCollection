@@ -35,7 +35,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             // Build collection info list
             string[] collectionGuids = AssetDatabase.FindAssets($"t:{nameof(ScriptableObjectCollection)}");
             var allCollectionGuids = new HashSet<string>(collectionGuids);
-            var collections = new List<(ScriptableObjectCollection collection, string path, string folder, string guid)>();
+            var collections = new List<(ScriptableObjectCollection collection, string path, string guid)>();
 
             foreach (string assetGuid in collectionGuids)
             {
@@ -48,13 +48,13 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
                 string folder = Path.GetDirectoryName(path)?.Replace('\\', '/');
                 if (!string.IsNullOrEmpty(folder))
-                    collections.Add((collection, path, folder + "/", assetGuid));
+                    collections.Add((collection, path, assetGuid));
             }
 
             // Build item → labels map: each item gets labels for ALL parent collections
             var itemLabels = new Dictionary<string, HashSet<string>>();
 
-            foreach (var (collection, path, folder, guid) in collections)
+            foreach (var (collection, path, guid) in collections)
             {
                 Type itemType = collection.GetItemType();
                 if (itemType == null)
@@ -118,8 +118,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
                     continue;
 
                 bool isManaged = typeof(ScriptableObjectCollection).IsAssignableFrom(assetType)
-                              || typeof(ISOCItem).IsAssignableFrom(assetType)
-                              || typeof(IRegisteredSO).IsAssignableFrom(assetType);
+                                 || typeof(ISOCItem).IsAssignableFrom(assetType)
+                                 || typeof(IRegisteredSO).IsAssignableFrom(assetType);
 
                 if (!isManaged)
                     continue;
