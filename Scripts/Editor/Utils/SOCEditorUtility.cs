@@ -89,6 +89,15 @@ namespace BrunoMikoski.ScriptableObjectCollections
         }
 
         /// <summary>
+        /// Create a new typed item asset in the collection's Items/ subfolder.
+        /// </summary>
+        public static T AddNewItem<T>(this ScriptableObjectCollection collection, string assetName = "")
+            where T : ScriptableObject, ISOCItem
+        {
+            return collection.AddNewItem(typeof(T), assetName) as T;
+        }
+
+        /// <summary>
         /// Remove an item from a collection. Optionally deletes the asset file.
         /// </summary>
         public static void RemoveItem(this ScriptableObjectCollection collection, ScriptableObject item, bool deleteAsset)
