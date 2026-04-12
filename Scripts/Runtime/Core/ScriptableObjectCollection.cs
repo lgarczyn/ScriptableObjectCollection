@@ -211,10 +211,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
         /// </summary>
         public static IReadOnlyList<TObjectType> Values => OfType<TObjectType>();
 
-        public override void Unload()
-        {
-            base.Unload();
-        }
         public override Type GetItemType() => typeof(TObjectType);
         public IEnumerable<TObjectType> Items => GetLoadedItems().OfType<TObjectType>();
         // TODO: clean this mess

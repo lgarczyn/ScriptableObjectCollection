@@ -68,7 +68,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
         {
             string path = AssetDatabase.GetAssetPath(item as Object);
             newName = Path.GetFileNameWithoutExtension(newName);
-            if (!newName.EndsWith(".asset"))
+            if (!newName.EndsWith(".asset", StringComparison.Ordinal))
                 newName += ".asset";
             AssetDatabase.RenameAsset(path, newName);
         }

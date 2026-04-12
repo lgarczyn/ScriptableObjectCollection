@@ -10,7 +10,7 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
         public void NewItem_ImplementsISOCItem()
         {
             var item = ScriptableObject.CreateInstance<TestItem>();
-            Assert.IsTrue(item is ISOCItem);
+            Assert.IsInstanceOf<ISOCItem>(item);
             Object.DestroyImmediate(item);
         }
 

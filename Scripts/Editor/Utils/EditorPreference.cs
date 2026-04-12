@@ -166,7 +166,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
         }
 
         public EditorPreferenceFloat(string path, float defaultValue = default, bool isProjectSpecific = false)
-            : base(path, defaultValue) { }
+            : base(path, defaultValue, isProjectSpecific) { }
 
         public override void DrawGUILayout(GUIContent label, params GUILayoutOption[] options)
         {
