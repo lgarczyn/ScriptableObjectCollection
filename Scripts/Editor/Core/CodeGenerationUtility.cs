@@ -304,11 +304,16 @@ namespace BrunoMikoski.ScriptableObjectCollections
             AppendLine(writer, indentation, $"private static WeakReference<{collectionTypeName}> {privateValuesName};");
             AppendLine(writer, indentation);
 
-            // WeakReference fields for items
-            var items = collection.ItemsGeneric;
-            for (int i = 0; i < items.Count; i++)
+            // Sort items by asset GUID for deterministic output
+            var unsortedItems = collection.ItemsGeneric;
+            var items = new List<ScriptableObject>(unsortedItems);
+            items.Sort((a, b) => string.Compare(
+                AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(a)),
+                AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(b)),
+                StringComparison.Ordinal));
+
+            foreach (var collectionItem in items)
             {
-                ScriptableObject collectionItem = items[i];
                 Type type = useBaseClass ? collection.GetItemType() : collectionItem.GetType();
                 AppendLine(writer, indentation,
                     $"private static WeakReference<{type.FullName}> cached{collectionItem.name.Sanitize().FirstToUpper()};");
