@@ -23,6 +23,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
         /// Used by pre-build and manual sync — not called during normal editing
         /// (the postprocessor handles incremental updates).
         /// </summary>
+        [MenuItem("Assets/Create/ScriptableObject Collection/Sync All Addressables", false, 200)]
         public static void SyncAllAddressables()
         {
             var settings = AddressableAssetSettingsDefaultObject.Settings;
