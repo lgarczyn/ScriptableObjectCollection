@@ -307,10 +307,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             // Sort items by asset GUID for deterministic output
             var unsortedItems = collection.ItemsGeneric;
             var items = new List<ScriptableObject>(unsortedItems);
-            items.Sort((a, b) => string.Compare(
-                AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(a)),
-                AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(b)),
-                StringComparison.Ordinal));
+            items.Sort((a, b) => string.Compare(a.name, b.name, StringComparison.Ordinal));
 
             foreach (var collectionItem in items)
             {
