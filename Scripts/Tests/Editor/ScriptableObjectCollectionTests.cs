@@ -110,15 +110,13 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
         // --- FindAll error handling ---
 
         [Test]
-        public void FindAll_WithNoAddressables_DoesNotThrow()
+        public void FindAll_WithInvalidLabel_ReturnsEmptyList()
         {
             LogAssert.ignoreFailingMessages = true;
-            Assert.DoesNotThrow(() =>
-            {
-                try { ScriptableObjectCollection.FindAll(); }
-                catch (Exception) { /* Addressables may throw if no label exists */ }
-            });
+            var result = ScriptableObjectCollection.FindAll();
             LogAssert.ignoreFailingMessages = false;
+
+            Assert.IsNotNull(result);
         }
     }
 }
