@@ -94,6 +94,15 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
         [OneTimeTearDown]
         public void OneTimeTearDown()
         {
+            // Delete the generated .g.cs (may be outside TestFolder if script couldn't be found)
+            if (!string.IsNullOrEmpty(generatedFilePath) && File.Exists(generatedFilePath))
+            {
+                File.Delete(generatedFilePath);
+                string meta = generatedFilePath + ".meta";
+                if (File.Exists(meta))
+                    File.Delete(meta);
+            }
+
             if (AssetDatabase.IsValidFolder(TestFolder))
                 AssetDatabase.DeleteAsset(TestFolder);
             AssetDatabase.SaveAssets();
