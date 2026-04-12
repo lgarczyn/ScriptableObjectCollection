@@ -105,9 +105,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
                 if (!string.IsNullOrEmpty(currentGuid))
                 {
-                    string path = AssetDatabase.GUIDToAssetPath(currentGuid);
-                    if (!string.IsNullOrEmpty(path))
-                        currentItem = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
+                    currentItem = Addressables.LoadAssetAsync<ScriptableObject>(currentGuid).WaitForCompletion();
                 }
 
                 EditorGUI.BeginProperty(position, label, property);
