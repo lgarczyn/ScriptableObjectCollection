@@ -419,7 +419,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             }
 
             filteredItems.Remove(scriptableObject);
-            SOCEditorUtility.RemoveItem(scriptableObject, deleteAsset);
+            collection.RemoveItem(scriptableObject, deleteAsset);
         }
 
         private void ReloadFilteredItems(bool refreshListView = true)
@@ -572,11 +572,11 @@ namespace BrunoMikoski.ScriptableObjectCollections
                                     moveItems.Add(filteredItems[selectedIndex]);
 
                                 foreach (ScriptableObject item in moveItems)
-                                    SOCEditorUtility.MoveItemToCollection(item as ISOCItem, otherCollection);
+                                    collection.MoveItemToCollection(item as ISOCItem, otherCollection);
                             }
                             else
                             {
-                                SOCEditorUtility.MoveItemToCollection(filteredItems[targetIndex] as ISOCItem, otherCollection);
+                                collection.MoveItemToCollection(filteredItems[targetIndex] as ISOCItem, otherCollection);
                             }
                             ReloadFilteredItems();
                         }

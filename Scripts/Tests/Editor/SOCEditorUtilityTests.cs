@@ -73,12 +73,90 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
 
             Assert.IsTrue(File.Exists(assetPath));
 
-            SOCEditorUtility.RemoveItem(item, deleteAsset: true);
+            collection.RemoveItem(item, deleteAsset: true);
             AssetDatabase.Refresh();
 
             Assert.IsNull(AssetDatabase.LoadAssetAtPath<ScriptableObject>(assetPath));
         }
 
+
+        [Test]
+        public void TryGetItemByName_FindsExistingItem()
+        {
+            collection.AddNewItem(typeof(TestItem), "Sword");
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+
+            // Reload collection so ItemsGeneric picks up the new item
+            collection = AssetDatabase.LoadAssetAtPath<TestCollection>($"{TestFolder}/TestCollection.asset");
+
+            bool found = collection.TryGetItemByName<TestItem>("Sword", out var result);
+
+            Assert.IsTrue(found);
+            Assert.IsNotNull(result);
+            Assert.AreEqual("Sword", result.name);
+        }
+
+        [Test]
+        public void TryGetItemByName_ReturnsFalseForMissing()
+        {
+            bool found = collection.TryGetItemByName<TestItem>("DoesNotExist", out var result);
+
+            Assert.IsFalse(found);
+            Assert.IsNull(result);
+        }
+
+        [Test]
+        public void GetOrAddNew_ReturnsExistingItem()
+        {
+            collection.AddNewItem(typeof(TestItem), "Shield");
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+
+            collection = AssetDatabase.LoadAssetAtPath<TestCollection>($"{TestFolder}/TestCollection.asset");
+
+            var item = collection.GetOrAddNew<TestItem>("Shield");
+
+            Assert.IsNotNull(item);
+            Assert.AreEqual("Shield", item.name);
+        }
+
+        [Test]
+        public void GetOrAddNew_CreatesNewItemWhenMissing()
+        {
+            var item = collection.GetOrAddNew<TestItem>("NewBow");
+
+            Assert.IsNotNull(item);
+            Assert.AreEqual("NewBow", item.name);
+
+            string assetPath = AssetDatabase.GetAssetPath(item);
+            Assert.IsTrue(assetPath.Contains("Items/"), $"Expected item in Items/ folder, got: {assetPath}");
+        }
+
+        [Test]
+        public void GetOrAddNew_ByType_ReturnsExistingItem()
+        {
+            collection.AddNewItem(typeof(TestItem), "Axe");
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+
+            collection = AssetDatabase.LoadAssetAtPath<TestCollection>($"{TestFolder}/TestCollection.asset");
+
+            var item = collection.GetOrAddNew(typeof(TestItem), "Axe");
+
+            Assert.IsNotNull(item);
+            Assert.AreEqual("Axe", item.name);
+        }
+
+        [Test]
+        public void GetOrAddNew_ByType_CreatesNewItemWhenMissing()
+        {
+            var item = collection.GetOrAddNew(typeof(TestItem), "Mace");
+
+            Assert.IsNotNull(item);
+            Assert.AreEqual("Mace", item.name);
+            Assert.IsTrue(item is TestItem);
+        }
 
         [Test]
         public void FindCollectionForItemPath_FindsParentCollection()
