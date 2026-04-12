@@ -440,16 +440,11 @@ namespace BrunoMikoski.ScriptableObjectCollections
         {
             filteredItems.Clear();
 
-            // Force reload from Addressables
-            collection.Unload();
             var items = collection.ItemsGeneric;
-
             for (int i = 0; i < items.Count; i++)
             {
-                ScriptableObject scriptableObject = items[i];
-                if (scriptableObject == null)
-                    continue;
-                filteredItems.Add(scriptableObject);
+                if (items[i] != null)
+                    filteredItems.Add(items[i]);
             }
 
             if (refreshListView)
