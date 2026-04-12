@@ -30,6 +30,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (weakRef != null && weakRef.TryGetTarget(out var cached) && cached is UnityEngine.Object obj && obj != null)
                 return cached;
 
+            if (string.IsNullOrEmpty(guid))
+                return null;
+
             var loaded = Addressables.LoadAssetAsync<T>(guid).WaitForCompletion();
             weakRef = new System.WeakReference<T>(loaded);
             return loaded;
