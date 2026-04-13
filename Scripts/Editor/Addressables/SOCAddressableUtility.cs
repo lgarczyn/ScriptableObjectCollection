@@ -191,6 +191,27 @@ namespace BrunoMikoski.ScriptableObjectCollections
         }
 
         /// <summary>
+        /// Get or create an Addressable entry in the given group. Skips CreateOrMoveEntry if already correct.
+        /// </summary>
+        private static AddressableAssetEntry GetOrCreateEntry(AddressableAssetSettings settings, string assetGuid, AddressableAssetGroup group, bool postEvent = true)
+        {
+            var existing = settings.FindAssetEntry(assetGuid);
+            if (existing != null && existing.parentGroup == group)
+                return existing;
+
+            var entry = settings.CreateOrMoveEntry(assetGuid, group, readOnly: false, postEvent: postEvent);
+            entry.address = assetGuid;
+            return entry;
+        }
+
+        private static void EnsureLabel(AddressableAssetSettings settings, AddressableAssetEntry entry, string label, bool postEvent = true)
+        {
+            settings.AddLabel(label, postEvent);
+            if (!entry.labels.Contains(label))
+                entry.labels.Add(label);
+        }
+
+        /// <summary>
         /// Ensure a collection asset is addressable in the shared collections group.
         /// </summary>
         public static void EnsureCollectionAddressable(string assetPath)
@@ -202,12 +223,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (string.IsNullOrEmpty(assetGuid)) return;
 
             var group = GetOrCreateCollectionsGroup(settings);
-            var entry = settings.CreateOrMoveEntry(assetGuid, group, readOnly: false);
-            entry.address = assetGuid;
-
-            settings.AddLabel(CollectionsLabel);
-            if (!entry.labels.Contains(CollectionsLabel))
-                entry.labels.Add(CollectionsLabel);
+            var entry = GetOrCreateEntry(settings, assetGuid, group);
+            EnsureLabel(settings, entry, CollectionsLabel);
         }
 
         /// <summary>
@@ -222,17 +239,13 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (string.IsNullOrEmpty(assetGuid)) return;
 
             var group = GetOrCreateCollectionsGroup(settings);
-            var entry = settings.CreateOrMoveEntry(assetGuid, group, readOnly: false);
-            entry.address = assetGuid;
-
-            settings.AddLabel(collectionLabel);
-            if (!entry.labels.Contains(collectionLabel))
-                entry.labels.Add(collectionLabel);
+            var entry = GetOrCreateEntry(settings, assetGuid, group);
+            EnsureLabel(settings, entry, collectionLabel);
         }
 
         /// <summary>
         /// Set the correct collection labels for an item, removing any stale collection labels.
-        /// An item belongs to every collection whose folder is an ancestor of the item's path.
+        /// Called from bulk sync — uses postEvent:false for performance.
         /// </summary>
         public static void ReconcileItemLabels(string assetPath, HashSet<string> correctLabels, HashSet<string> allCollectionGuids)
         {
@@ -243,10 +256,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (string.IsNullOrEmpty(assetGuid)) return;
 
             var group = GetOrCreateCollectionsGroup(settings);
-            var entry = settings.CreateOrMoveEntry(assetGuid, group, readOnly: false);
-            entry.address = assetGuid;
+            var entry = GetOrCreateEntry(settings, assetGuid, group, postEvent: false);
 
-            // Remove stale collection labels (labels that are collection GUIDs but shouldn't be)
+            // Remove stale collection labels
             var currentLabels = entry.labels.ToList();
             foreach (string label in currentLabels)
             {
@@ -256,11 +268,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             // Add correct collection labels
             foreach (string label in correctLabels)
-            {
-                settings.AddLabel(label);
-                if (!entry.labels.Contains(label))
-                    entry.labels.Add(label);
-            }
+                EnsureLabel(settings, entry, label, postEvent: false);
         }
 
         /// <summary>
@@ -309,12 +317,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (string.IsNullOrEmpty(assetGuid)) return;
 
             var group = GetOrCreateRegisteredGroup(settings);
-            var entry = settings.CreateOrMoveEntry(assetGuid, group, readOnly: false);
-            entry.address = assetGuid;
-
-            settings.AddLabel(ScriptableObjectRegistry.RegisteredLabel);
-            if (!entry.labels.Contains(ScriptableObjectRegistry.RegisteredLabel))
-                entry.labels.Add(ScriptableObjectRegistry.RegisteredLabel);
+            var entry = GetOrCreateEntry(settings, assetGuid, group);
+            EnsureLabel(settings, entry, ScriptableObjectRegistry.RegisteredLabel);
         }
 
         private static AddressableAssetGroup GetOrCreateCollectionsGroup(AddressableAssetSettings settings)
