@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.AddressableAssets;
 using UnityEngine;
 
 namespace BrunoMikoski.ScriptableObjectCollections
@@ -106,6 +107,10 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (UnityEditor.AddressableAssets.AddressableAssetSettingsDefaultObject.Settings == null)
                 return;
 
+            // Handle deleted collections: strip their labels from orphaned items
+            if (deletedAssets.Length > 0)
+                CleanUpDeletedCollections(deletedAssets);
+
             HashSet<string> changedPaths = importedAssets
                 .Concat(movedAssets)
                 .Where(p => p.EndsWith(".asset", StringComparison.Ordinal))
@@ -182,6 +187,46 @@ namespace BrunoMikoski.ScriptableObjectCollections
             {
                 EditorUtility.ClearProgressBar();
             }
+        }
+
+        private static void CleanUpDeletedCollections(string[] deletedAssets)
+        {
+            var settings = AddressableAssetSettingsDefaultObject.Settings;
+            if (settings == null) return;
+
+            var deletedCollectionGuids = new HashSet<string>();
+            foreach (string deletedPath in deletedAssets)
+            {
+                if (!deletedPath.EndsWith(".asset", StringComparison.Ordinal))
+                    continue;
+
+                string guid = AssetDatabase.AssetPathToGUID(deletedPath);
+                if (string.IsNullOrEmpty(guid))
+                    continue;
+
+                var entry = settings.FindAssetEntry(guid);
+                if (entry != null && entry.labels.Contains(SOCAddressableUtility.CollectionsLabel))
+                {
+                    deletedCollectionGuids.Add(guid);
+                    entry.parentGroup.RemoveAssetEntry(entry);
+                }
+            }
+
+            if (deletedCollectionGuids.Count == 0)
+                return;
+
+            // Strip deleted collection GUIDs as labels from remaining entries
+            foreach (var group in settings.groups)
+            {
+                if (group == null) continue;
+                foreach (var entry in group.entries)
+                {
+                    foreach (string collectionGuid in deletedCollectionGuids)
+                        entry.labels.Remove(collectionGuid);
+                }
+            }
+
+            InvalidateCache();
         }
 
         private static void BakeGuids(HashSet<string> changedPaths)
