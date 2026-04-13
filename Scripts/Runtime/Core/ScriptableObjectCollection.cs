@@ -224,6 +224,14 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             try
             {
+                if (string.IsNullOrEmpty(AddressableLabel))
+                {
+                    Debug.LogError($"Collection '{name}' has empty AddressableLabel (m_Guid not baked). Run Sync All Addressables.");
+                    loadedItems = new List<TObjectType>();
+                    isLoaded = true;
+                    return;
+                }
+
                 itemsHandle = Addressables.LoadAssetsAsync<ScriptableObject>(AddressableLabel, null);
                 var result = itemsHandle.WaitForCompletion();
 
