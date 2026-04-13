@@ -197,7 +197,11 @@ namespace BrunoMikoski.ScriptableObjectCollections
         {
             var existing = settings.FindAssetEntry(assetGuid);
             if (existing != null && existing.parentGroup == group)
+            {
+                if (existing.address != assetGuid)
+                    existing.address = assetGuid;
                 return existing;
+            }
 
             var entry = settings.CreateOrMoveEntry(assetGuid, group, readOnly: false, postEvent: postEvent);
             entry.address = assetGuid;
