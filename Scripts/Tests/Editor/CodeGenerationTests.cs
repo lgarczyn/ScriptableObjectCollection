@@ -70,9 +70,9 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             if (UnityEditor.AddressableAssets.AddressableAssetSettingsDefaultObject.Settings != null)
             {
                 string collectionGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(collection));
-                SOCAddressableUtility.EnsureCollectionAddressable(collection, AssetDatabase.GetAssetPath(collection));
-                SOCAddressableUtility.EnsureItemAddressable(AssetDatabase.GetAssetPath(itemAlpha), collectionGuid, collection.name);
-                SOCAddressableUtility.EnsureItemAddressable(AssetDatabase.GetAssetPath(itemBeta), collectionGuid, collection.name);
+                SOCAddressableUtility.EnsureCollectionAddressable(AssetDatabase.GetAssetPath(collection));
+                SOCAddressableUtility.EnsureItemAddressable(AssetDatabase.GetAssetPath(itemAlpha), collectionGuid);
+                SOCAddressableUtility.EnsureItemAddressable(AssetDatabase.GetAssetPath(itemBeta), collectionGuid);
             }
 
             // Configure settings

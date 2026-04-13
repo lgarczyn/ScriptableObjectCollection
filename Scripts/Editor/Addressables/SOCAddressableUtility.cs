@@ -15,7 +15,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
     /// </summary>
     public static class SOCAddressableUtility
     {
-        private const string SOCGroupPrefix = "SOC_";
+        private const string CollectionsGroupName = "SOC_Collections";
+        private const string RegisteredGroupName = "SOC_Registered";
         public const string CollectionsLabel = "soc_collections";
 
         /// <summary>
@@ -33,7 +34,25 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 return;
             }
 
-            // Build collection info list
+            AssetDatabase.StartAssetEditing();
+            try
+            {
+                int collections = SyncCollections();
+                int registered = SyncRegisteredObjects();
+                BakeAllGuids();
+                Debug.Log($"SOC Addressables synced: {collections} collections, {registered} registered SOs processed.");
+            }
+            finally
+            {
+                AssetDatabase.StopAssetEditing();
+            }
+        }
+
+        /// <summary>
+        /// Ensure all collections and their items are addressable with correct labels.
+        /// </summary>
+        private static int SyncCollections()
+        {
             string[] collectionGuids = AssetDatabase.FindAssets($"t:{nameof(ScriptableObjectCollection)}");
             var allCollectionGuids = new HashSet<string>(collectionGuids);
             var collections = new List<(ScriptableObjectCollection collection, string path, string guid)>();
@@ -45,16 +64,14 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 if (collection == null)
                     continue;
 
-                EnsureCollectionAddressable(collection, path);
+                EnsureCollectionAddressable(path);
 
                 string folder = Path.GetDirectoryName(path)?.Replace('\\', '/');
                 if (!string.IsNullOrEmpty(folder))
                     collections.Add((collection, path, assetGuid));
             }
 
-            // Build item → labels map and track primary collection name per item
             var itemLabels = new Dictionary<string, HashSet<string>>();
-            var itemPrimaryCollectionName = new Dictionary<string, string>();
 
             foreach (var (collection, path, guid) in collections)
             {
@@ -74,21 +91,25 @@ namespace BrunoMikoski.ScriptableObjectCollections
                     {
                         labels = new HashSet<string>();
                         itemLabels[itemPath] = labels;
-                        itemPrimaryCollectionName[itemPath] = collection.name;
                     }
                     labels.Add(guid);
                 }
             }
 
-            // Apply labels atomically per item, removing stale collection labels
             foreach (var (itemPath, labels) in itemLabels)
-                ReconcileItemLabels(itemPath, labels, allCollectionGuids, itemPrimaryCollectionName[itemPath]);
+                ReconcileItemLabels(itemPath, labels, allCollectionGuids);
 
-            int count = collections.Count;
+            return collections.Count;
+        }
 
-            // Label all IRegisteredSO assets
+        /// <summary>
+        /// Ensure all IRegisteredSO assets are addressable in the registered group.
+        /// </summary>
+        private static int SyncRegisteredObjects()
+        {
             string[] registeredGuids = AssetDatabase.FindAssets($"t:{nameof(ScriptableObject)}");
-            int registeredCount = 0;
+            int count = 0;
+
             foreach (string registeredGuid in registeredGuids)
             {
                 string registeredPath = AssetDatabase.GUIDToAssetPath(registeredGuid);
@@ -96,21 +117,18 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 if (registeredType != null && typeof(IRegisteredSO).IsAssignableFrom(registeredType))
                 {
                     EnsureRegisteredAddressable(registeredPath);
-                    registeredCount++;
+                    count++;
                 }
             }
 
-            // Bake Unity asset GUIDs into m_Guid fields
-            BakeAllGuids();
-
-            Debug.Log($"SOC Addressables synced: {count} collections, {registeredCount} registered SOs processed.");
+            return count;
         }
 
         /// <summary>
         /// Bake Unity asset GUIDs into the m_Guid serialized field of all SOC-managed assets.
         /// Called during SyncAllAddressables (pre-build and manual sync).
         /// </summary>
-        public static void BakeAllGuids()
+        private static void BakeAllGuids()
         {
             string[] allGuids = AssetDatabase.FindAssets("t:ScriptableObject");
             foreach (string guid in allGuids)
@@ -144,9 +162,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
         }
 
         /// <summary>
-        /// Ensure a collection asset is addressable in its own dedicated group.
+        /// Ensure a collection asset is addressable in the shared collections group.
         /// </summary>
-        public static void EnsureCollectionAddressable(ScriptableObjectCollection collection, string assetPath)
+        public static void EnsureCollectionAddressable(string assetPath)
         {
             var settings = AddressableAssetSettingsDefaultObject.Settings;
             if (settings == null) return;
@@ -154,8 +172,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             string assetGuid = AssetDatabase.AssetPathToGUID(assetPath);
             if (string.IsNullOrEmpty(assetGuid)) return;
 
-            string groupName = SOCGroupPrefix + collection.name;
-            var group = GetOrCreateGroup(settings, groupName);
+            var group = GetOrCreateCollectionsGroup(settings);
             var entry = settings.CreateOrMoveEntry(assetGuid, group, readOnly: false);
             entry.address = assetGuid;
 
@@ -165,9 +182,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
         }
 
         /// <summary>
-        /// Ensure an item asset is addressable in its parent collection's group.
+        /// Ensure an item asset is addressable in the shared collections group.
         /// </summary>
-        public static void EnsureItemAddressable(string assetPath, string collectionLabel, string collectionName)
+        public static void EnsureItemAddressable(string assetPath, string collectionLabel)
         {
             var settings = AddressableAssetSettingsDefaultObject.Settings;
             if (settings == null) return;
@@ -175,8 +192,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             string assetGuid = AssetDatabase.AssetPathToGUID(assetPath);
             if (string.IsNullOrEmpty(assetGuid)) return;
 
-            string groupName = SOCGroupPrefix + collectionName;
-            var group = GetOrCreateGroup(settings, groupName);
+            var group = GetOrCreateCollectionsGroup(settings);
             var entry = settings.CreateOrMoveEntry(assetGuid, group, readOnly: false);
             entry.address = assetGuid;
 
@@ -188,9 +204,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
         /// <summary>
         /// Set the correct collection labels for an item, removing any stale collection labels.
         /// An item belongs to every collection whose folder is an ancestor of the item's path.
-        /// Places the item in the first matching collection's group.
         /// </summary>
-        public static void ReconcileItemLabels(string assetPath, HashSet<string> correctLabels, HashSet<string> allCollectionGuids, string primaryCollectionName)
+        public static void ReconcileItemLabels(string assetPath, HashSet<string> correctLabels, HashSet<string> allCollectionGuids)
         {
             var settings = AddressableAssetSettingsDefaultObject.Settings;
             if (settings == null) return;
@@ -198,8 +213,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             string assetGuid = AssetDatabase.AssetPathToGUID(assetPath);
             if (string.IsNullOrEmpty(assetGuid)) return;
 
-            string groupName = SOCGroupPrefix + primaryCollectionName;
-            var group = GetOrCreateGroup(settings, groupName);
+            var group = GetOrCreateCollectionsGroup(settings);
             var entry = settings.CreateOrMoveEntry(assetGuid, group, readOnly: false);
             entry.address = assetGuid;
 
@@ -255,7 +269,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
         }
 
         /// <summary>
-        /// Ensure a registered SO is addressable in its own dedicated group.
+        /// Ensure a registered SO is addressable in the shared registered group.
         /// </summary>
         public static void EnsureRegisteredAddressable(string assetPath)
         {
@@ -265,9 +279,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             string assetGuid = AssetDatabase.AssetPathToGUID(assetPath);
             if (string.IsNullOrEmpty(assetGuid)) return;
 
-            string assetName = Path.GetFileNameWithoutExtension(assetPath);
-            string groupName = SOCGroupPrefix + assetName;
-            var group = GetOrCreateGroup(settings, groupName);
+            var group = GetOrCreateRegisteredGroup(settings);
             var entry = settings.CreateOrMoveEntry(assetGuid, group, readOnly: false);
             entry.address = assetGuid;
 
@@ -276,13 +288,27 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 entry.labels.Add(ScriptableObjectRegistry.RegisteredLabel);
         }
 
-        public static AddressableAssetGroup GetOrCreateGroup(AddressableAssetSettings settings, string groupName)
+        private static AddressableAssetGroup GetOrCreateCollectionsGroup(AddressableAssetSettings settings)
+        {
+            return GetOrCreatePackSeparatelyGroup(settings, CollectionsGroupName);
+        }
+
+        private static AddressableAssetGroup GetOrCreateRegisteredGroup(AddressableAssetSettings settings)
+        {
+            return GetOrCreatePackSeparatelyGroup(settings, RegisteredGroupName);
+        }
+
+        private static AddressableAssetGroup GetOrCreatePackSeparatelyGroup(AddressableAssetSettings settings, string groupName)
         {
             var group = settings.FindGroup(groupName);
             if (group == null)
             {
                 group = settings.CreateGroup(groupName, false, false, true,
                     null, typeof(BundledAssetGroupSchema));
+
+                var schema = group.GetSchema<BundledAssetGroupSchema>();
+                if (schema != null)
+                    schema.BundleMode = BundledAssetGroupSchema.BundlePackingMode.PackSeparately;
             }
             return group;
         }

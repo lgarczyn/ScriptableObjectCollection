@@ -37,9 +37,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
         private struct CollectionInfo
         {
             public ScriptableObjectCollection Collection;
-            public string Path;     // e.g. "Assets/Data/Enemies/EnemyCollection.asset"
-            public string Folder;   // e.g. "Assets/Data/Enemies/"
-            public string Label;    // The collection's asset GUID, used as label for its items
+            public string Path; // e.g. "Assets/Data/Enemies/EnemyCollection.asset"
+            public string Folder; // e.g. "Assets/Data/Enemies/"
+            public string Label; // The collection's asset GUID, used as label for its items
         }
 
         /// <summary>
@@ -134,7 +134,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 foreach (CollectionInfo info in CachedCollections)
                 {
                     if (info.Collection && changedPaths.Contains(info.Path))
-                        SOCAddressableUtility.EnsureCollectionAddressable(info.Collection, info.Path);
+                        SOCAddressableUtility.EnsureCollectionAddressable(info.Path);
                 }
 
                 // Process each changed asset
@@ -142,9 +142,9 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 {
                     currentStep++;
                     if (EditorUtility.DisplayCancelableProgressBar(
-                        "SOC Postprocessor",
-                        changedPath,
-                        (float)currentStep / totalSteps))
+                            "SOC Postprocessor",
+                            changedPath,
+                            (float)currentStep / totalSteps))
                     {
                         break;
                     }
@@ -157,7 +157,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
                     if (typeof(ISOCItem).IsAssignableFrom(assetType))
                     {
                         var correctLabels = new HashSet<string>();
-                        string primaryCollectionName = null;
                         foreach (CollectionInfo info in CachedCollections)
                         {
                             if (!info.Collection)
@@ -165,14 +164,11 @@ namespace BrunoMikoski.ScriptableObjectCollections
                             if (changedPath == info.Path)
                                 continue;
                             if (changedPath.StartsWith(info.Folder, StringComparison.Ordinal))
-                            {
                                 correctLabels.Add(info.Label);
-                                primaryCollectionName ??= info.Collection.name;
-                            }
                         }
 
-                        if (primaryCollectionName != null)
-                            SOCAddressableUtility.ReconcileItemLabels(changedPath, correctLabels, allCollectionGuids, primaryCollectionName);
+                        if (correctLabels.Count > 0)
+                            SOCAddressableUtility.ReconcileItemLabels(changedPath, correctLabels, allCollectionGuids);
                     }
 
                     // Auto-label IRegisteredSO assets
@@ -188,48 +184,35 @@ namespace BrunoMikoski.ScriptableObjectCollections
             }
         }
 
-        private static bool isBaking;
-
         private static void BakeGuids(HashSet<string> changedPaths)
         {
-            if (isBaking)
-                return;
-
-            isBaking = true;
-            try
+            foreach (string path in changedPaths)
             {
-                foreach (string path in changedPaths)
-                {
-                    Type assetType = AssetDatabase.GetMainAssetTypeAtPath(path);
-                    if (assetType == null)
-                        continue;
+                Type assetType = AssetDatabase.GetMainAssetTypeAtPath(path);
+                if (assetType == null)
+                    continue;
 
-                    bool isManaged = typeof(ScriptableObjectCollection).IsAssignableFrom(assetType)
-                                  || typeof(ISOCItem).IsAssignableFrom(assetType)
-                                  || typeof(IRegisteredSO).IsAssignableFrom(assetType);
-                    if (!isManaged)
-                        continue;
+                bool isManaged = typeof(ScriptableObjectCollection).IsAssignableFrom(assetType)
+                                 || typeof(ISOCItem).IsAssignableFrom(assetType)
+                                 || typeof(IRegisteredSO).IsAssignableFrom(assetType);
+                if (!isManaged)
+                    continue;
 
-                    string assetGuid = AssetDatabase.AssetPathToGUID(path);
-                    if (string.IsNullOrEmpty(assetGuid))
-                        continue;
+                string assetGuid = AssetDatabase.AssetPathToGUID(path);
+                if (string.IsNullOrEmpty(assetGuid))
+                    continue;
 
-                    var asset = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
-                    if (asset == null)
-                        continue;
+                var asset = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
+                if (asset == null)
+                    continue;
 
-                    var so = new SerializedObject(asset);
-                    var guidProp = so.FindProperty("m_Guid");
-                    if (guidProp == null || guidProp.stringValue == assetGuid)
-                        continue;
+                var so = new SerializedObject(asset);
+                var guidProp = so.FindProperty("m_Guid");
+                if (guidProp == null || guidProp.stringValue == assetGuid)
+                    continue;
 
-                    guidProp.stringValue = assetGuid;
-                    so.ApplyModifiedPropertiesWithoutUndo();
-                }
-            }
-            finally
-            {
-                isBaking = false;
+                guidProp.stringValue = assetGuid;
+                so.ApplyModifiedPropertiesWithoutUndo();
             }
         }
 

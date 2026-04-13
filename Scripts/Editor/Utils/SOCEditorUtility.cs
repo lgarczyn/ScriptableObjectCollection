@@ -82,7 +82,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (AddressableAssetSettingsDefaultObject.Settings != null)
             {
                 string collectionGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(collection));
-                SOCAddressableUtility.EnsureItemAddressable(uniqueAssetPath, collectionGuid, collection.name);
+                SOCAddressableUtility.EnsureItemAddressable(uniqueAssetPath, collectionGuid);
             }
 
             return newItem;
