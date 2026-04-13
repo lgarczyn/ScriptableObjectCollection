@@ -25,11 +25,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
         private const string FOLDOUT_SCRIPTABLE_OBJECT_KEY = "FoldoutScriptableObject";
         private const string FOLDOUT_SCRIPT_KEY = "FoldoutScript";
         
-        private const string WAITING_SCRIPTS_TO_RECOMPILE_TO_CONTINUE_KEY = "WaitingScriptsToRecompileToContinueKey";
-        private const string LAST_COLLECTION_SCRIPTABLE_OBJECT_PATH_KEY = "CollectionScriptableObjectPathKey";
-        private const string LAST_COLLECTION_FULL_NAME_KEY = "CollectionFullNameKey";
-        private const string LAST_COLLECTION_NAMESPACE_KEY = "CollectionNamespaceKey";
-        private const string LAST_GENERATED_COLLECTION_SCRIPT_PATH_KEY = "CollectionScriptPathKey";
         private const string LAST_TARGET_SCRIPTS_FOLDER_KEY = "LastTargetScriptsFolder";
         private const string CREATE_FOLDER_FOR_THIS_COLLECTION_KEY = "CreateFolderForThisCollection";
         private const string CREATE_FOLDER_FOR_THIS_COLLECTION_SCRIPTS_KEY = "CreateFolderForThisCollectionScripts";
@@ -63,18 +58,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
         {
             get
             {
-                if (cachedScriptableObjectFolderBase == null)
-                {
-                    if (!string.IsNullOrEmpty(targetFolder))
-                    {
-                        cachedScriptableObjectFolderBase = AssetDatabase.LoadAssetAtPath<DefaultAsset>(targetFolder);
-                    }
-                    else if (!string.IsNullOrEmpty(LastCollectionScriptableObjectPath.Value))
-                    {
-                        cachedScriptableObjectFolderBase =
-                            AssetDatabase.LoadAssetAtPath<DefaultAsset>(LastCollectionScriptableObjectPath.Value);
-                    }
-                }
+                if (cachedScriptableObjectFolderBase == null && !string.IsNullOrEmpty(targetFolder))
+                    cachedScriptableObjectFolderBase = AssetDatabase.LoadAssetAtPath<DefaultAsset>(targetFolder);
 
                 return cachedScriptableObjectFolderBase;
             }
@@ -251,25 +236,10 @@ namespace BrunoMikoski.ScriptableObjectCollections
         private static readonly EditorPreferenceBool FoldoutScriptableObject =
             new EditorPreferenceBool(FOLDOUT_SCRIPTABLE_OBJECT_KEY, false, true);
         private static readonly EditorPreferenceBool FoldoutScript = new EditorPreferenceBool(FOLDOUT_SCRIPT_KEY, false, true);
-        
 
-        private static readonly EditorPreferenceBool WaitingRecompileForContinue =
-            new EditorPreferenceBool(WAITING_SCRIPTS_TO_RECOMPILE_TO_CONTINUE_KEY, false, true);
-
-        private static readonly EditorPreferenceString LastCollectionScriptableObjectPath =
-            new EditorPreferenceString(LAST_COLLECTION_SCRIPTABLE_OBJECT_PATH_KEY, null, true);
-
-        private static readonly EditorPreferenceString LastCollectionFullName =
-            new EditorPreferenceString(LAST_COLLECTION_FULL_NAME_KEY, null, true);
-        
-        private static readonly EditorPreferenceString LastCollectionNamespace =
-            new EditorPreferenceString(LAST_COLLECTION_NAMESPACE_KEY, null, true);
 
         private static readonly EditorPreferenceString LastScriptsTargetFolder =
             new EditorPreferenceString(LAST_TARGET_SCRIPTS_FOLDER_KEY, null, true);
-
-        public static readonly EditorPreferenceString LastGeneratedCollectionScriptPath =
-            new EditorPreferenceString(LAST_GENERATED_COLLECTION_SCRIPT_PATH_KEY, null, true);
 
         private static readonly EditorPreferenceBool CreateFolderForThisCollection =
             new EditorPreferenceBool(CREATE_FOLDER_FOR_THIS_COLLECTION_KEY, false, true);
@@ -584,20 +554,34 @@ namespace BrunoMikoski.ScriptableObjectCollections
             return scriptsFolder;
         }
 
+        [Serializable]
+        private struct PendingCollection
+        {
+            public string folderPath;
+            public string collectionName;
+            public string ns;
+            public string fullTypeName;
+            public string scriptPath;
+        }
+
+        private const string PendingSessionKey = "SOC_PendingCollection";
+
         private void CreateNewCollection()
         {
-            LastCollectionNamespace.Value = Namespace;
-            
-            bool scriptsGenerated = false;
-            scriptsGenerated |= CreateCollectionItemScript();
-            scriptsGenerated |= CreateCollectionScript();
+            CreateCollectionItemScript();
+            CreateCollectionScript();
 
-            WaitingRecompileForContinue.Value = true;
-            
+            var pending = new PendingCollection
+            {
+                folderPath = ScriptableObjectFolderPath,
+                collectionName = CollectionName,
+                ns = Namespace,
+                fullTypeName = string.IsNullOrEmpty(Namespace) ? CollectionName : $"{Namespace}.{CollectionName}",
+                scriptPath = Path.Combine(ScriptsFolderPath, $"{CollectionName}.cs")
+            };
+            SessionState.SetString(PendingSessionKey, JsonUtility.ToJson(pending));
+
             AssetDatabase.Refresh();
-
-            if (!scriptsGenerated)
-                AfterScriptsAreReady();
         }
 
         private bool CreateCollectionItemScript()
@@ -617,21 +601,13 @@ namespace BrunoMikoski.ScriptableObjectCollections
         {
             string folder = ScriptsFolderPath;
 
-            bool result = CodeGenerationUtility.CreateNewScript(CollectionName,
+            return CodeGenerationUtility.CreateNewScript(CollectionName,
                 folder,
                 Namespace,
                 $"[CreateAssetMenu(menuName = \"ScriptableObject Collection/Collections/Create {CollectionName}\", fileName = \"{CollectionName}\", order = 0)]",
                 $"public class {CollectionName} : ScriptableObjectCollection<{collectionItemName}>",
                 null,
                 typeof(ScriptableObjectCollection).Namespace, "UnityEngine", "System.Collections.Generic");
-
-            if (string.IsNullOrEmpty(Namespace))
-                LastCollectionFullName.Value = $"{CollectionName}";
-            else
-                LastCollectionFullName.Value = $"{Namespace}.{CollectionName}";
-
-            LastGeneratedCollectionScriptPath.Value = Path.Combine(folder, $"{CollectionName}.cs");
-            return result;
         }
 
         private bool CheckValidityOfSettings()
@@ -672,44 +648,43 @@ namespace BrunoMikoski.ScriptableObjectCollections
             return isValid;
         }
 
-        private static void AfterScriptsAreReady()
+        [InitializeOnLoad]
+        private static class AfterRecompileHook
         {
-            if (!WaitingRecompileForContinue.Value)
-                return;
-
-            WaitingRecompileForContinue.Value = false;
-
-            string assemblyName =
-                CompilationPipeline.GetAssemblyNameFromScriptPath(LastGeneratedCollectionScriptPath.Value);
-
-            Type targetType = Type.GetType($"{LastCollectionFullName.Value}, {assemblyName}");
-            
-            ScriptableObjectCollection collectionAsset =
-                ScriptableObjectCollectionUtility.CreateScriptableObjectOfType(targetType, 
-                    windowInstance.ScriptableObjectFolderPath, windowInstance.CollectionName) as ScriptableObjectCollection;
-            
-            if (!string.IsNullOrEmpty(LastCollectionNamespace.Value))
-                SOCSettings.Instance.SetNamespaceForCollection(collectionAsset, LastCollectionNamespace.Value);
-            
-            Selection.objects = new Object[] {collectionAsset};
-            EditorGUIUtility.PingObject(collectionAsset);
-
-            CreateCollectionWizard openWindowInstance = GetWindow<CreateCollectionWizard>();
-            openWindowInstance.Close();
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-        }
-
-        private class CollectionCustomEditorAssetPostProcessor : AssetPostprocessor
-        {
-            [UsedImplicitly]
-            private static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths,
-                bool didDomainReload)
+            static AfterRecompileHook()
             {
-                if (!didDomainReload)
+                string json = SessionState.GetString(PendingSessionKey, "");
+                if (string.IsNullOrEmpty(json))
                     return;
-                
-                AfterScriptsAreReady();
+
+                SessionState.EraseString(PendingSessionKey);
+
+                var pending = JsonUtility.FromJson<PendingCollection>(json);
+                if (string.IsNullOrEmpty(pending.fullTypeName) || string.IsNullOrEmpty(pending.folderPath))
+                    return;
+
+                string assemblyName = CompilationPipeline.GetAssemblyNameFromScriptPath(pending.scriptPath);
+                Type targetType = Type.GetType($"{pending.fullTypeName}, {assemblyName}");
+                if (targetType == null)
+                {
+                    Debug.LogError($"Could not find type '{pending.fullTypeName}' in assembly '{assemblyName}' after recompile.");
+                    return;
+                }
+
+                var collectionAsset = ScriptableObjectCollectionUtility.CreateScriptableObjectOfType(
+                    targetType, pending.folderPath, pending.collectionName) as ScriptableObjectCollection;
+
+                if (!string.IsNullOrEmpty(pending.ns))
+                    SOCSettings.Instance.SetNamespaceForCollection(collectionAsset, pending.ns);
+
+                Selection.objects = new Object[] { collectionAsset };
+                EditorGUIUtility.PingObject(collectionAsset);
+
+                if (HasOpenInstances<CreateCollectionWizard>())
+                    GetWindow<CreateCollectionWizard>().Close();
+
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
             }
         }
     }
