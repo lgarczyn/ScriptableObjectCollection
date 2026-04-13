@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEngine;
@@ -169,7 +168,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                     return;
                 
                 cachedNamespacePrefix = value;
-                SOCSettings.Instance.SetNamespacePrefix(cachedNamespacePrefix);
+                SOCSettings.Instance.NamespacePrefix  = cachedNamespacePrefix;
             }
         }
 
@@ -215,7 +214,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 if (UseMaximumNamespaceDepth == value)
                     return;
                 
-                SOCSettings.Instance.SetUseMaximumNamespaceDepth(value);
+                SOCSettings.Instance.UseMaximumNamespaceDepth = value;
             }
         }
         
@@ -227,7 +226,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
                 if (MaximumNamespaceDepth == value)
                     return;
                 
-                SOCSettings.Instance.SetMaximumNamespaceDepth(value);
+                SOCSettings.Instance.MaximumNamespaceDepth = value;
             }
         }
 
@@ -584,24 +583,24 @@ namespace BrunoMikoski.ScriptableObjectCollections
             AssetDatabase.Refresh();
         }
 
-        private bool CreateCollectionItemScript()
+        private void CreateCollectionItemScript()
         {
             string folder = ScriptsFolderPath;
             LastScriptsTargetFolder.Value = ScriptsFolderPathWithoutParentFolder;
 
-            return CodeGenerationUtility.CreateNewScript(collectionItemName, 
+            CodeGenerationUtility.CreateNewScript(collectionItemName,
                 folder,
                 Namespace, 
                 string.Empty,
                 $"public partial class {collectionItemName} : {nameof(ScriptableObjectCollectionItem)}", null, 
-                    typeof(ScriptableObjectCollectionItem).Namespace);
+                typeof(ScriptableObjectCollectionItem).Namespace);
         }
         
-        private bool CreateCollectionScript()
+        private void CreateCollectionScript()
         {
             string folder = ScriptsFolderPath;
 
-            return CodeGenerationUtility.CreateNewScript(CollectionName,
+            CodeGenerationUtility.CreateNewScript(CollectionName,
                 folder,
                 Namespace,
                 $"[CreateAssetMenu(menuName = \"ScriptableObject Collection/Collections/Create {CollectionName}\", fileName = \"{CollectionName}\", order = 0)]",

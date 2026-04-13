@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -104,8 +103,13 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
             var result = new List<T>();
             var seen = new HashSet<T>();
+            var targetType = typeof(T);
             foreach (var collection in FindAll())
             {
+                Type itemType = collection.GetItemType();
+                if (itemType != null && !targetType.IsAssignableFrom(itemType))
+                    continue;
+
                 var items = collection.ItemsGeneric;
                 for (int i = 0; i < items.Count; i++)
                     if (items[i] is T typed && seen.Add(typed))
@@ -222,9 +226,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         public override void Load()
         {
-#if !UNITY_EDITOR
             if (isLoaded) return;
-#endif
 
             if (string.IsNullOrEmpty(AddressableLabel))
             {

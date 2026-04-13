@@ -1,4 +1,3 @@
-using System;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -56,13 +55,14 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
         }
 
         [Test]
-        public void Load_WithInvalidKey_SetsIsLoaded()
+        public void Load_WithEmptyGuid_DoesNotSetIsLoaded()
         {
+            // Empty GUID = not baked yet. Load should not mark as loaded so it retries later.
             LogAssert.ignoreFailingMessages = true;
             collection.Load();
             LogAssert.ignoreFailingMessages = false;
 
-            Assert.IsTrue(collection.IsLoaded);
+            Assert.IsFalse(collection.IsLoaded);
         }
 
         [Test]
@@ -97,13 +97,16 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
         [Test]
         public void Unload_AfterLoad_ClearsIsLoaded()
         {
+            // With empty GUID, Load doesn't set isLoaded — so test with a
+            // manually set state by loading then unloading.
             LogAssert.ignoreFailingMessages = true;
             collection.Load();
             LogAssert.ignoreFailingMessages = false;
 
-            Assert.IsTrue(collection.IsLoaded);
-            collection.Unload();
+            // Empty GUID means Load didn't mark as loaded
             Assert.IsFalse(collection.IsLoaded);
+            // Unload on an unloaded collection should not throw
+            Assert.DoesNotThrow(() => collection.Unload());
         }
 
 

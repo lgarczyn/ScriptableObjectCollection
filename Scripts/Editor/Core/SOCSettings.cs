@@ -51,16 +51,40 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         [SerializeField]
         private string namespacePrefix;
-        public string NamespacePrefix => namespacePrefix;
-        
+        public string NamespacePrefix
+        {
+            get => namespacePrefix;
+            set
+            {
+                namespacePrefix = value;
+                Save();
+            }
+        }
+
         [SerializeField]
         private bool useMaximumNamespaceDepth = true;
-        public bool UseMaximumNamespaceDepth => useMaximumNamespaceDepth;
+        public bool UseMaximumNamespaceDepth
+        {
+            get => useMaximumNamespaceDepth;
+            set
+            {
+                useMaximumNamespaceDepth = value;
+                Save();
+            }
+        }
 
         [SerializeField] 
         private int maximumNamespaceDepth = 2;
-        public int MaximumNamespaceDepth => maximumNamespaceDepth;
-        
+        public int MaximumNamespaceDepth
+        {
+            get => maximumNamespaceDepth;
+            set
+            {
+                maximumNamespaceDepth = Mathf.Max(MINIMUM_NAMESPACE_DEPTH, value);
+                Save();
+            }
+        }
+
         private static readonly GUIContent namespacePrefixGUIContent = new GUIContent(
             "Prefix",
             "When using the Create New Collection wizard," +
@@ -71,23 +95,6 @@ namespace BrunoMikoski.ScriptableObjectCollections
             "If specified, automatically derived namespaces will only include up to this many folders inside your " +
             "project's Scripts folder.");
 
-        public void SetNamespacePrefix(string namespacePrefix)
-        {
-            this.namespacePrefix = namespacePrefix;
-            Save();
-        }
-        
-        public void SetUseMaximumNamespaceDepth(bool useMaximumNamespaceDepth)
-        {
-            this.useMaximumNamespaceDepth = useMaximumNamespaceDepth;
-            Save();
-        }
-        
-        public void SetMaximumNamespaceDepth(int maximumNamespaceDepth)
-        {
-            this.maximumNamespaceDepth = Mathf.Max(MINIMUM_NAMESPACE_DEPTH, maximumNamespaceDepth);
-            Save();
-        }
 
         public void OnSceneGUI(string search)
         {
