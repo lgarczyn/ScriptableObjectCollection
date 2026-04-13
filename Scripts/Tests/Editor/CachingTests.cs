@@ -1,5 +1,6 @@
 using System;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
@@ -173,6 +174,54 @@ namespace BrunoMikoski.ScriptableObjectCollections.Tests
             LogAssert.ignoreFailingMessages = false;
 
             Assert.IsNotNull(weakRef);
+        }
+
+        // --- LazyLoadReference does not prevent unloading ---
+
+        [Test]
+        public void UnloadUnusedAssets_ClearsUnreferencedAsset()
+        {
+            // Baseline: verify that UnloadUnusedAssetsImmediate actually works
+            // for a persisted asset with no strong references.
+            const string assetPath = "Assets/SOCUnloadBaselineTemp.asset";
+
+            var collection = ScriptableObject.CreateInstance<TestCollection>();
+            AssetDatabase.CreateAsset(collection, assetPath);
+            AssetDatabase.SaveAssets();
+
+            int instanceId = collection.GetInstanceID();
+            collection = null;
+
+            EditorUtility.UnloadUnusedAssetsImmediate();
+
+            var reloaded = EditorUtility.InstanceIDToObject(instanceId);
+            AssetDatabase.DeleteAsset(assetPath);
+
+            Assert.IsTrue(reloaded == null,
+                "UnloadUnusedAssetsImmediate should unload a persisted asset with no strong references");
+        }
+
+        [Test]
+        public void LazyLoadReference_DoesNotPreventUnload()
+        {
+            // With the baseline working, verify LazyLoadReference doesn't keep it alive.
+            const string assetPath = "Assets/SOCLazyLoadTestTemp.asset";
+
+            var collection = ScriptableObject.CreateInstance<TestCollection>();
+            AssetDatabase.CreateAsset(collection, assetPath);
+            AssetDatabase.SaveAssets();
+
+            var lazyRef = new LazyLoadReference<TestCollection> { asset = collection };
+            int instanceId = collection.GetInstanceID();
+            collection = null;
+
+            EditorUtility.UnloadUnusedAssetsImmediate();
+
+            var reloaded = EditorUtility.InstanceIDToObject(instanceId);
+            AssetDatabase.DeleteAsset(assetPath);
+
+            Assert.IsTrue(reloaded == null,
+                "LazyLoadReference should not prevent UnloadUnusedAssets from collecting the asset");
         }
 
         // --- FindAll returns non-null even on failure ---
