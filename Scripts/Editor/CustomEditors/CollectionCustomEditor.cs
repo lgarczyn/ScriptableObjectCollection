@@ -447,6 +447,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
                     filteredItems.Add(items[i]);
             }
 
+            filteredItems.Sort((a, b) => string.Compare(a.name, b.name, StringComparison.Ordinal));
+
             if (refreshListView)
                 collectionItemListView.RefreshItems();
         }
