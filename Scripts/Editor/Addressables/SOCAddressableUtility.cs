@@ -37,15 +37,44 @@ namespace BrunoMikoski.ScriptableObjectCollections
             AssetDatabase.StartAssetEditing();
             try
             {
+                int removed = RemoveStaleEntries();
                 int collections = SyncCollections();
                 int registered = SyncRegisteredObjects();
                 BakeAllGuids();
-                Debug.Log($"SOC Addressables synced: {collections} collections, {registered} registered SOs processed.");
+                Debug.Log($"SOC Addressables synced: {collections} collections, {registered} registered SOs. {removed} stale entries removed.");
             }
             finally
             {
                 AssetDatabase.StopAssetEditing();
             }
+        }
+
+        /// <summary>
+        /// Remove Addressable entries whose assets no longer exist on disk.
+        /// </summary>
+        private static int RemoveStaleEntries()
+        {
+            var settings = AddressableAssetSettingsDefaultObject.Settings;
+            if (settings == null) return 0;
+
+            int removed = 0;
+            foreach (var group in settings.groups)
+            {
+                if (group == null) continue;
+
+                var entries = new List<AddressableAssetEntry>(group.entries);
+                foreach (var entry in entries)
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(entry.guid);
+                    if (string.IsNullOrEmpty(path) || AssetDatabase.GetMainAssetTypeAtPath(path) == null)
+                    {
+                        group.RemoveAssetEntry(entry);
+                        removed++;
+                    }
+                }
+            }
+
+            return removed;
         }
 
         /// <summary>
