@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -101,20 +102,8 @@ namespace BrunoMikoski.ScriptableObjectCollections
             if (Cache<T>.ofType != null)
                 return Cache<T>.ofType;
 
-            var result = new List<T>();
-            var seen = new HashSet<T>();
             var targetType = typeof(T);
-            foreach (var collection in FindAll())
-            {
-                Type itemType = collection.GetItemType();
-                if (itemType != null && !targetType.IsAssignableFrom(itemType))
-                    continue;
-
-                var items = collection.ItemsGeneric;
-                for (int i = 0; i < items.Count; i++)
-                    if (items[i] is T typed && seen.Add(typed))
-                        result.Add(typed);
-            }
+            var result = FindByItemType(targetType).OfType<T>().Distinct().ToList();
             Cache<T>.ofType = result;
             cacheClearActions.Add(Cache<T>.Clear);
             return result;
@@ -142,16 +131,22 @@ namespace BrunoMikoski.ScriptableObjectCollections
         /// </summary>
         public static bool TryGetCollectionByGUID(string guid, out ScriptableObjectCollection result)
         {
-            foreach (var collection in FindAll())
+            if (string.IsNullOrEmpty(guid))
             {
-                if (collection.Guid == guid)
-                {
-                    result = collection;
-                    return true;
-                }
+                result = null;
+                return false;
             }
-            result = null;
-            return false;
+
+            try
+            {
+                result = Addressables.LoadAssetAsync<ScriptableObjectCollection>(guid).WaitForCompletion();
+                return result != null;
+            }
+            catch
+            {
+                result = null;
+                return false;
+            }
         }
 
         /// <summary>
