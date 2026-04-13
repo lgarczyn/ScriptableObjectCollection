@@ -27,8 +27,10 @@ namespace BrunoMikoski.ScriptableObjectCollections
         /// </summary>
         public static T Resolve<T>(ref System.WeakReference<T> weakRef, string guid) where T : class
         {
+#if !UNITY_EDITOR
             if (weakRef != null && weakRef.TryGetTarget(out var cached) && cached is UnityEngine.Object obj && obj != null)
                 return cached;
+#endif
 
             if (string.IsNullOrEmpty(guid))
                 return null;

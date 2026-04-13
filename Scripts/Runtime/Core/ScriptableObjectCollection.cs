@@ -47,8 +47,10 @@ namespace BrunoMikoski.ScriptableObjectCollections
         /// </summary>
         public static IReadOnlyList<ScriptableObjectCollection> FindAll()
         {
+#if !UNITY_EDITOR
             if (cachedFindAll != null)
                 return cachedFindAll;
+#endif
 
             try
             {
@@ -61,7 +63,7 @@ namespace BrunoMikoski.ScriptableObjectCollections
             catch (Exception e)
             {
                 Debug.LogWarning($"Failed to load collections: {e.Message}");
-                cachedFindAll = new List<ScriptableObjectCollection>();
+                return new List<ScriptableObjectCollection>();
             }
 
             return cachedFindAll;
@@ -220,18 +222,19 @@ namespace BrunoMikoski.ScriptableObjectCollections
 
         public override void Load()
         {
+#if !UNITY_EDITOR
             if (isLoaded) return;
+#endif
+
+            if (string.IsNullOrEmpty(AddressableLabel))
+            {
+                Debug.LogWarning($"Collection '{name}' has empty AddressableLabel (m_Guid not baked). Run Sync All Addressables.");
+                loadedItems ??= new List<TObjectType>();
+                return;
+            }
 
             try
             {
-                if (string.IsNullOrEmpty(AddressableLabel))
-                {
-                    Debug.LogError($"Collection '{name}' has empty AddressableLabel (m_Guid not baked). Run Sync All Addressables.");
-                    loadedItems = new List<TObjectType>();
-                    isLoaded = true;
-                    return;
-                }
-
                 itemsHandle = Addressables.LoadAssetsAsync<ScriptableObject>(AddressableLabel, null);
                 var result = itemsHandle.WaitForCompletion();
 
@@ -242,14 +245,14 @@ namespace BrunoMikoski.ScriptableObjectCollections
                         if (item is TObjectType typed)
                             loadedItems.Add(typed);
                 }
+
+                isLoaded = true;
             }
             catch (Exception e)
             {
                 Debug.LogWarning($"Failed to load items for collection '{name}': {e.Message}");
-                loadedItems = new List<TObjectType>();
+                loadedItems ??= new List<TObjectType>();
             }
-
-            isLoaded = true;
         }
 
         public override void Unload()
